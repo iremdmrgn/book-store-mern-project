@@ -1,12 +1,15 @@
 const express = require('express');
 const { createAOrder, getOrderByEmail } = require('./order.controller');
 
-const router =  express.Router();
+const router = express.Router();
 
-// create order endpoint
+// Sipariş oluşturma endpoint'i
 router.post("/", createAOrder);
 
-// get orders by user email 
+// Kullanıcı email'ine göre siparişleri getirme endpoint'i
 router.get("/email/:email", getOrderByEmail);
 
+// Diğer gerekli endpoint'ler burada tanımlanabilir (örneğin, sipariş güncelleme veya silme)
+
+// Modülü dışarıya aktarıyoruz
 module.exports = router;

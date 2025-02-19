@@ -1,40 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap");
 
+/* Genel arka plan */
+body {
+  background-color: rgba(240, 238, 215, 0.575) !important; /* Düz beyaz arka plan */
+  padding: 70px 0px 0px;
+  margin: 70px 0px 0px !important;
+}
+.px-4 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Swiper */
 .swiper {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .swiper-slide {
-    background: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  width: 100%;
+  height: 100%;
+}
 
-  }
-  
-  .swiper-slide img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+.swiper-slide {
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
- .swiper-button-prev {
-    display: none !important;
- }
- .swiper-button-next{
-    @apply bg-white p-5 rounded-full z-50 shadow-md
- }
+.swiper-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
- .swiper-button-prev:after, .swiper-button-next:after{
-    font-size: 16px !important;
- }
+/* Swiper yön butonları */
+.swiper-button-prev {
+  display: none !important;
+}
 
- .btn-primary {
-    @apply bg-primary  px-12 py-2 rounded-md text-base font-secondary font-bold hover:bg-secondary hover:text-white transition-all duration-200 cursor-pointer
- }
+.swiper-button-next {
+  @apply bg-white p-5 rounded-full z-50 shadow-md;
+}
 
-.html{
-   scroll-behavior: smooth;
+.swiper-button-prev:after,
+.swiper-button-next:after {
+  font-size: 16px !important;
+}
+
+/* Buton stilleri */
+.btn-primary {
+  @apply bg-primary  px-12 py-2 rounded-md text-base font-secondary font-bold hover:bg-secondary hover:text-white transition-all duration-200 cursor-pointer;
+}
+
+/* Sayfa kaydırma davranışı */
+.html {
+  scroll-behavior: smooth;
 }

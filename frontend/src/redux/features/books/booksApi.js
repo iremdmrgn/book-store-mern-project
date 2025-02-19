@@ -1,23 +1,23 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import getBaseUrl from '../../../utils/baseURL'
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import getBaseUrl from '../../../utils/baseURL';
 
-const  baseQuery = fetchBaseQuery({
+const baseQuery = fetchBaseQuery({
     baseUrl: `${getBaseUrl()}/api/books`,
     credentials: 'include',
     prepareHeaders: (Headers) => {
-        const token =  localStorage.getItem('token');
-        if(token) {
+        const token = localStorage.getItem('token');
+        if (token) {
             Headers.set('Authorization', `Bearer ${token}`);
         }
         return Headers;
     }
-})
+});
 
 const booksApi = createApi({
     reducerPath: 'booksApi',
     baseQuery,
     tagTypes: ['Books'],
-    endpoints: (builder) =>({
+    endpoints: (builder) => ({
         fetchAllBooks: builder.query({
             query: () => "/",
             providesTags: ["Books"]
@@ -35,7 +35,7 @@ const booksApi = createApi({
             invalidatesTags: ["Books"]
         }),
         updateBook: builder.mutation({
-            query: ({id, ...rest}) => ({
+            query: ({ id, ...rest }) => ({
                 url: `/edit/${id}`,
                 method: "PUT",
                 body: rest,
@@ -51,9 +51,25 @@ const booksApi = createApi({
                 method: "DELETE"
             }),
             invalidatesTags: ["Books"]
+        }),
+        // Arama endpoint'i eklendi
+        searchBooks: builder.query({
+            query: (query) => ({
+                url: `/search?query=${query}`,
+                method: "GET",
+            }),
+            providesTags: ["Books"],
         })
     })
-})
+});
 
-export const {useFetchAllBooksQuery, useFetchBookByIdQuery, useAddBookMutation, useUpdateBookMutation, useDeleteBookMutation} = booksApi;
+export const { 
+    useFetchAllBooksQuery, 
+    useFetchBookByIdQuery, 
+    useAddBookMutation, 
+    useUpdateBookMutation, 
+    useDeleteBookMutation,
+    useSearchBooksQuery // <-- Arama için yeni hook
+} = booksApi;
+
 export default booksApi;
