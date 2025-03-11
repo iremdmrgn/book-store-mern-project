@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useGetOrderByEmailQuery } from "../../redux/features/orders/ordersApi";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { getImgUrl } from "../../utils/getImgUrl";
+import axios from "axios";
 
 const Profile = () => {
   const { currentUser, logout } = useAuth();
@@ -9,7 +12,7 @@ const Profile = () => {
   const [selectedTab, setSelectedTab] = useState("userInfo");
   const [addresses, setAddresses] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState([]); // favorites state remains unchanged
 
   // Address form state
   const [newAddressTitle, setNewAddressTitle] = useState("");
@@ -26,7 +29,14 @@ const Profile = () => {
   const [cvv, setCvv] = useState("");
   const [cardHolder, setCardHolder] = useState("");
 
-  const { data: orders, error, isLoading } = useGetOrderByEmailQuery(currentUser?.email || "");
+  // Reviews state (for the Reviews tab)
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviews, setReviews] = useState([]);
+
+  const { data: orders, error, isLoading } = useGetOrderByEmailQuery(
+    currentUser?.email || ""
+  );
 
   useEffect(() => {
     if (!currentUser) {
@@ -34,16 +44,30 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+  // --- Address Operations ---
+  const fetchAddresses = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/address/${currentUser.uid.trim()}`
+      );
+      setAddresses(response.data);
+    } catch (err) {
+      console.error("Error fetching addresses:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load addresses",
+        text: "Please try again later.",
+      });
+    }
   };
 
-  const userName = currentUser?.displayName ? currentUser.displayName.split(' ') : [];
-  const firstName = userName[0] || currentUser?.email || "";
-  const lastName = userName[1] || "";
+  useEffect(() => {
+    if (selectedTab === "address" && currentUser && currentUser.uid) {
+      fetchAddresses();
+    }
+  }, [selectedTab, currentUser]);
 
-  const handleAddAddress = () => {
+  const handleAddAddress = async () => {
     if (
       newAddressTitle.trim() !== "" &&
       newStreet.trim() !== "" &&
@@ -62,25 +86,86 @@ const Profile = () => {
         postalCode: newPostalCode,
         country: newCountry,
       };
-      setAddresses([...addresses, newAddress]);
-      setNewAddressTitle("");
-      setNewStreet("");
-      setNewCity("");
-      setNewDistrict("");
-      setNewNeighborhood("");
-      setNewPostalCode("");
-      setNewCountry("");
-      
-      // After saving, redirect to the address tab
-      setSelectedTab("address");
+      try {
+        await axios.post(
+          `http://localhost:5000/api/address/${currentUser.uid.trim()}`,
+          newAddress
+        );
+        fetchAddresses();
+        setNewAddressTitle("");
+        setNewStreet("");
+        setNewCity("");
+        setNewDistrict("");
+        setNewNeighborhood("");
+        setNewPostalCode("");
+        setNewCountry("");
+        setSelectedTab("address");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Address Added",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      } catch (err) {
+        console.error("Error adding address:", err);
+        Swal.fire({
+          icon: "error",
+          title: "Failed to add address",
+          text: "Please try again.",
+        });
+      }
     }
   };
 
-  const handleDeleteAddress = (index) => {
-    setAddresses(addresses.filter((_, i) => i !== index));
+  const handleDeleteAddress = async (addressId) => {
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`
+      );
+      setAddresses(addresses.filter((address) => address._id !== addressId));
+      Swal.fire({
+        position: "top-end",
+        icon: "success",
+        title: "Address Deleted",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      console.error("Error deleting address:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to delete address",
+        text: "Please try again.",
+      });
+    }
+  };
+  // --- Address Operations End ---
+
+  // --- Payment Methods Operations ---
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`
+      );
+      setPayments(response.data);
+    } catch (err) {
+      console.error("Error fetching payment methods:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load payment methods",
+        text: "Please try again later.",
+      });
+    }
   };
 
-  const handleAddPayment = () => {
+  useEffect(() => {
+    if (selectedTab === "payment" && currentUser && currentUser.uid) {
+      fetchPaymentMethods();
+    }
+  }, [selectedTab, currentUser]);
+
+  const handleAddPayment = async () => {
     if (
       cardNumber.trim() !== "" &&
       expiryDate.trim() !== "" &&
@@ -93,19 +178,162 @@ const Profile = () => {
         cvv,
         cardHolder,
       };
-      setPayments([...payments, newPayment]);
-      setCardNumber("");
-      setExpiryDate("");
-      setCvv("");
-      setCardHolder("");
-      
-      // After saving, redirect to the payment tab
-      setSelectedTab("payment");
+      try {
+        await axios.post(
+          `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`,
+          newPayment
+        );
+        fetchPaymentMethods();
+        setCardNumber("");
+        setExpiryDate("");
+        setCvv("");
+        setCardHolder("");
+        setSelectedTab("payment");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Payment Method Added",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      } catch (err) {
+        console.error("Error adding payment method:", err);
+        Swal.fire({
+          icon: "error",
+          title: "Failed to add payment method",
+          text: "Please try again.",
+        });
+      }
     }
   };
 
-  const handleDeletePayment = (index) => {
-    setPayments(payments.filter((_, i) => i !== index));
+  const handleDeletePayment = async (methodId) => {
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}/${methodId}`
+      );
+      setPayments(payments.filter((payment) => payment._id !== methodId));
+      Swal.fire({
+        position: "top-end",
+        icon: "success",
+        title: "Payment Method Deleted",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      console.error("Error deleting payment method:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to delete payment method",
+        text: "Please try again.",
+      });
+    }
+  };
+  // --- Payment Methods Operations End ---
+
+  // Review silme fonksiyonu
+  const handleDeleteReview = async (reviewId) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/reviews/${reviewId}`);
+      setReviews(reviews.filter((review) => review._id !== reviewId));
+      Swal.fire({
+        position: "top-end",
+        icon: "success",
+        title: "Review Deleted",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to delete review",
+        text: "Please try again.",
+      });
+    }
+  };
+
+  // Kullanıcıya ait review'leri getirme fonksiyonu
+  // Ek olarak, eğer review.bookTitle boş veya "Unknown Book" ise, ilgili kitabın başlığı alınarak güncelleniyor.
+  const fetchUserReviews = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/reviews/user/${currentUser.uid}`
+      );
+      const reviewsData = response.data;
+      const updatedReviews = await Promise.all(
+        reviewsData.map(async (review) => {
+          if (!review.bookTitle || review.bookTitle === "Unknown Book") {
+            try {
+              const { data: book } = await axios.get(
+                `http://localhost:5000/api/books/${review.bookId}`
+              );
+              return { ...review, bookTitle: book.title };
+            } catch (error) {
+              console.error("Error fetching book for review:", error);
+              return review;
+            }
+          }
+          return review;
+        })
+      );
+      setReviews(updatedReviews);
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTab === "reviews" && currentUser && currentUser.uid) {
+      fetchUserReviews();
+    }
+  }, [selectedTab, currentUser]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const userName = currentUser?.displayName
+    ? currentUser.displayName.split(" ")
+    : [];
+  const firstName = userName[0] || currentUser?.email || "";
+  const lastName = userName[1] || "";
+
+  // Example: Order details pop-up (Orders tab)
+  const handleOrderClick = (order) => {
+    Swal.fire({
+      title: `<strong>Order ${
+        order.orderNumber ? order.orderNumber : order._id
+      }</strong>`,
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Status:</strong> ${order.status || "Pending"}</p>
+          <p><strong>Total:</strong> ${
+            order.totalPrice !== undefined && order.totalPrice !== null
+              ? `$${order.totalPrice.toFixed(2)}`
+              : "N/A"
+          }</p>
+          <p><strong>Placed on:</strong> ${new Date(
+            order.createdAt
+          ).toLocaleDateString()}</p>
+          <hr style="margin: 1rem 0;"/>
+          <p style="font-size: 1rem;"><strong>Shipping Details:</strong></p>
+          <p style="font-size: 0.9rem;">${
+            order.trackingInfo ||
+            "Your order is being processed. Tracking info will be updated soon."
+          }</p>
+        </div>
+      `,
+      icon: "info",
+      width: "600px",
+      showCloseButton: true,
+      confirmButtonText: "Close",
+      customClass: {
+        title: "swal2-title-custom",
+        htmlContainer: "swal2-html-container-custom",
+      },
+    });
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -117,18 +345,21 @@ const Profile = () => {
 
       <div className="flex items-center mt-4">
         <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white text-xl font-semibold">
-          {firstName[0]}{lastName[0]}
+          {firstName[0]}
+          {lastName[0]}
         </div>
         <div className="ml-4">
-          <p className="font-semibold text-lg">{firstName} {lastName}</p>
+          <p className="font-semibold text-lg">
+            {firstName} {lastName}
+          </p>
         </div>
       </div>
 
       <div className="mt-6 flex space-x-6">
         <div className="flex flex-col w-1/4 space-y-4">
-          {[{ key: "userInfo", label: "User Information", icon: "fas fa-user" },
+          {[
+            { key: "userInfo", label: "User Information", icon: "fas fa-user" },
             { key: "orders", label: "Orders", icon: "fas fa-box" },
-            { key: "favorites", label: "Favorites", icon: "fas fa-star" },
             { key: "reviews", label: "Reviews", icon: "fas fa-comment-dots" },
             { key: "address", label: "Addresses", icon: "fas fa-home" },
             { key: "payment", label: "Payment Methods", icon: "fas fa-credit-card" },
@@ -136,7 +367,11 @@ const Profile = () => {
             <button
               key={key}
               onClick={() => setSelectedTab(key)}
-              className={`px-4 py-3 text-lg font-semibold transition-all duration-300 ease-in-out w-full rounded-lg flex items-center justify-start ${selectedTab === key ? "bg-blue-700 text-white shadow-lg" : "bg-[rgba(150,150,170,0.3)] text-gray-600 hover:bg-blue-50"}`}
+              className={`px-4 py-3 text-lg font-semibold transition-all duration-300 ease-in-out w-full rounded-lg flex items-center justify-start ${
+                selectedTab === key
+                  ? "bg-blue-700 text-white shadow-lg"
+                  : "bg-[rgba(150,150,170,0.3)] text-gray-600 hover:bg-blue-50"
+              }`}
             >
               <i className={`${icon} mr-2`} style={{ fontSize: "1.2rem" }}></i>
               {label}
@@ -151,218 +386,31 @@ const Profile = () => {
         </div>
 
         <div className="w-3/4">
-          {selectedTab === "orders" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Your Orders</h3>
-              <div>
-                {orders?.length === 0 && <p>No orders found</p>}
-                {orders?.map((order, index) => (
-                  <div key={index} className="p-4 bg-gray-100 rounded-lg mb-4">
-                    <p className="font-semibold">Order ID: {order._id}</p>
-                    <p>Status: {order.status}</p>
-                    <p>Total: ${order.totalAmount ? order.totalAmount.toFixed(2) : "N/A"}</p>
-                    <p>Placed on: {order.createdAt}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selectedTab === "favorites" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Your Favorites</h3>
-              <div>
-                {favorites?.length === 0 && <p>No favorites added</p>}
-                {favorites?.map((favorite, index) => (
-                  <div key={index} className="p-4 bg-gray-100 rounded-lg mb-4">
-                    <p className="font-semibold">{favorite.title}</p>
-                    <p>{favorite.author}</p>
-                    <p>Price: ${favorite.price}</p>
-                    <button
-                      onClick={() => setFavorites(favorites.filter((_, i) => i !== index))}
-                      className="mt-2 text-red-600"
-                    >
-                      Remove from Favorites
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selectedTab === "userInfo" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Your Information</h3>
-              <div className="grid gap-4">
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">First Name</label>
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Last Name</label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Phone Number</label>
-                  <input
-                    type="text"
-                    placeholder="Enter phone number"
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    value={currentUser?.email || ""}
-                    readOnly
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <button
-                  onClick={() => alert('User information updated!')}
-                  className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
-                >
-                  Update Information
-                </button>
-              </div>
-            </div>
-          )}
-
-          {selectedTab === "address" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Your Addresses</h3>
-              <div className="grid gap-4">
-                {addresses.length === 0 ? (
-                  <p>No addresses added.</p>
-                ) : (
-                  addresses.map((address, index) => (
-                    <div key={index} className="p-4 bg-gray-100 rounded-lg mb-4">
-                      <p className="font-semibold">{address.title}</p>
-                      <p>{address.street}</p>
-                      <p>{address.city}, {address.district}, {address.neighborhood}</p>
-                      <p>{address.postalCode}</p>
-                      <p>{address.country}</p>
-                      <button
-                        onClick={() => handleDeleteAddress(index)}
-                        className="mt-2 text-red-600"
-                      >
-                        Delete Address
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedTab("addAddress")}
-                className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
-              >
-                Add New Address
-              </button>
-            </div>
-          )}
-
-          {selectedTab === "addAddress" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Add New Address</h3>
-              <div className="grid gap-4">
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Title</label>
-                  <input
-                    type="text"
-                    value={newAddressTitle}
-                    onChange={(e) => setNewAddressTitle(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Street</label>
-                  <input
-                    type="text"
-                    value={newStreet}
-                    onChange={(e) => setNewStreet(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">City</label>
-                  <input
-                    type="text"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">District</label>
-                  <input
-                    type="text"
-                    value={newDistrict}
-                    onChange={(e) => setNewDistrict(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Neighborhood</label>
-                  <input
-                    type="text"
-                    value={newNeighborhood}
-                    onChange={(e) => setNewNeighborhood(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Postal Code</label>
-                  <input
-                    type="text"
-                    value={newPostalCode}
-                    onChange={(e) => setNewPostalCode(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Country</label>
-                  <input
-                    type="text"
-                    value={newCountry}
-                    onChange={(e) => setNewCountry(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
-                  />
-                </div>
-                <button
-                  onClick={handleAddAddress}
-                  className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
-                >
-                  Save Address
-                </button>
-              </div>
-            </div>
-          )}
-
+          {/* Payment Methods Tab */}
           {selectedTab === "payment" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Your Payment Methods</h3>
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Your Payment Methods
+              </h3>
               <div className="grid gap-4">
                 {payments.length === 0 ? (
                   <p>No payment methods added.</p>
                 ) : (
-                  payments.map((payment, index) => (
-                    <div key={index} className="p-4 bg-gray-100 rounded-lg mb-4">
-                      <p className="font-semibold">Cardholder: {payment.cardHolder}</p>
-                      <p>Card Number: **** **** **** {payment.cardNumber.slice(-4)}</p>
+                  payments.map((payment) => (
+                    <div
+                      key={payment._id}
+                      className="p-4 bg-gray-100 rounded-lg mb-4"
+                    >
+                      <p className="font-semibold">
+                        Cardholder: {payment.cardHolder}
+                      </p>
+                      <p>
+                        Card Number: **** **** ****{" "}
+                        {payment.cardNumber.slice(-4)}
+                      </p>
                       <p>Expiry Date: {payment.expiryDate}</p>
                       <button
-                        onClick={() => handleDeletePayment(index)}
+                        onClick={() => handleDeletePayment(payment._id)}
                         className="mt-2 text-red-600"
                       >
                         Delete Payment
@@ -382,10 +430,14 @@ const Profile = () => {
 
           {selectedTab === "addPayment" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">Add New Payment Method</h3>
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Add New Payment Method
+              </h3>
               <div className="grid gap-4">
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Card Number</label>
+                  <label className="block font-semibold text-gray-700">
+                    Card Number
+                  </label>
                   <input
                     type="text"
                     value={cardNumber}
@@ -394,7 +446,9 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Expiry Date</label>
+                  <label className="block font-semibold text-gray-700">
+                    Expiry Date
+                  </label>
                   <input
                     type="text"
                     value={expiryDate}
@@ -403,7 +457,9 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">CVV</label>
+                  <label className="block font-semibold text-gray-700">
+                    CVV
+                  </label>
                   <input
                     type="text"
                     value={cvv}
@@ -412,7 +468,9 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">Cardholder Name</label>
+                  <label className="block font-semibold text-gray-700">
+                    Cardholder Name
+                  </label>
                   <input
                     type="text"
                     value={cardHolder}
@@ -426,6 +484,295 @@ const Profile = () => {
                 >
                   Save Payment Method
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Orders Tab */}
+          {selectedTab === "orders" && (
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Your Orders
+              </h3>
+              <div>
+                {orders?.length === 0 && <p>No orders found</p>}
+                {orders?.map((order) => (
+                  <div
+                    key={order._id}
+                    onClick={() => handleOrderClick(order)}
+                    className="p-4 bg-gray-100 rounded-lg mb-4 cursor-pointer hover:bg-gray-200 transition-colors flex items-center gap-4"
+                  >
+                    {order.items && order.items.length > 0 && (
+                      <img
+                        src={
+                          order.items[0].coverImage
+                            ? getImgUrl(order.items[0].coverImage).href
+                            : "/default-image.jpg"
+                        }
+                        alt="Book cover"
+                        className="w-20 h-20 object-cover rounded shadow"
+                      />
+                    )}
+                    <div>
+                      <p className="font-semibold">
+                        Order Number:{" "}
+                        {order.orderNumber ? order.orderNumber : order._id}
+                      </p>
+                      <p>Status: {order.status ? order.status : "Pending"}</p>
+                      <p>
+                        Total:{" "}
+                        {order.totalPrice !== undefined &&
+                        order.totalPrice !== null
+                          ? `$${order.totalPrice.toFixed(2)}`
+                          : "N/A"}
+                      </p>
+                      <p>
+                        Placed on:{" "}
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* User Information Tab */}
+          {selectedTab === "userInfo" && (
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Your Information
+              </h3>
+              <div className="grid gap-4">
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter phone number"
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={currentUser?.email || ""}
+                    readOnly
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <button
+                  onClick={() => alert("User information updated!")}
+                  className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
+                >
+                  Update Information
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Addresses Tab */}
+          {selectedTab === "address" && (
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Your Addresses
+              </h3>
+              <div className="grid gap-4">
+                {addresses.length === 0 ? (
+                  <p>No addresses added.</p>
+                ) : (
+                  addresses.map((address) => (
+                    <div
+                      key={address._id}
+                      className="p-4 bg-gray-100 rounded-lg mb-4"
+                    >
+                      <p className="font-semibold">{address.title}</p>
+                      <p>{address.street}</p>
+                      <p>
+                        {address.city}, {address.district}, {address.neighborhood}
+                      </p>
+                      <p>{address.postalCode}</p>
+                      <p>{address.country}</p>
+                      <button
+                        onClick={() => handleDeleteAddress(address._id)}
+                        className="mt-2 text-red-600"
+                      >
+                        Delete Address
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedTab("addAddress")}
+                className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
+              >
+                Add New Address
+              </button>
+            </div>
+          )}
+
+          {selectedTab === "addAddress" && (
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Add New Address
+              </h3>
+              <div className="grid gap-4">
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={newAddressTitle}
+                    onChange={(e) => setNewAddressTitle(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Street
+                  </label>
+                  <input
+                    type="text"
+                    value={newStreet}
+                    onChange={(e) => setNewStreet(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    District
+                  </label>
+                  <input
+                    type="text"
+                    value={newDistrict}
+                    onChange={(e) => setNewDistrict(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Neighborhood
+                  </label>
+                  <input
+                    type="text"
+                    value={newNeighborhood}
+                    onChange={(e) => setNewNeighborhood(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={newPostalCode}
+                    onChange={(e) => setNewPostalCode(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="block font-semibold text-gray-700">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={newCountry}
+                    onChange={(e) => setNewCountry(e.target.value)}
+                    className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                  />
+                </div>
+                <button
+                  onClick={handleAddAddress}
+                  className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
+                >
+                  Save Address
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reviews Tab – Sadece yorumların listelendiği alan, input/form bulunmuyor */}
+          {selectedTab === "reviews" && (
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
+              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+                Your Reviews
+              </h3>
+              <div className="mt-8 space-y-4">
+                {reviews.length > 0 ? (
+                  reviews.map((review, index) => (
+                    <div
+                      key={index}
+                      className="p-4 border border-gray-200 rounded-lg shadow-sm flex items-start justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 text-yellow-500">
+                          {[...Array(5)].map((_, i) => (
+                            <span
+                              key={i}
+                              className={`text-xl ${
+                                i < review.rating
+                                  ? "text-yellow-500"
+                                  : "text-gray-300"
+                              }`}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-gray-700">
+                          <strong>{review.reviewer}</strong> reviewed{" "}
+                          <span className="font-bold">
+                            {review.bookTitle ? review.bookTitle : ""}
+                          </span>
+                          : {review.text}
+                        </p>
+                      </div>
+                      {currentUser && review.userId === currentUser.uid }
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No reviews yet.</p>
+                )}
               </div>
             </div>
           )}

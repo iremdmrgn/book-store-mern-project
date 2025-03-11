@@ -1,44 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const PaymentMethod = require('./PaymentMethod.model'); // PaymentMethod modelini import ediyoruz
+const paymentMethodController = require('./PaymentMethod.controller');
 
-// Ödeme yöntemi ekleme endpoint'i
-router.post('/payment-method', async (req, res) => {
-    const { cardNumber, cardHolder, expiryDate, cvv, userId } = req.body;
+// Kullanıcının ödeme yöntemlerini getir
+router.get('/:userId', paymentMethodController.getPaymentMethods);
 
-    try {
-        const newPaymentMethod = new PaymentMethod({
-            userId,
-            cardNumber,
-            cardHolder,
-            expiryDate,
-            cvv,
-            createdAt: new Date()
-        });
+// Yeni ödeme yöntemi ekle
+router.post('/:userId', paymentMethodController.addPaymentMethod);
 
-        await newPaymentMethod.save(); // MongoDB'ye kaydet
-        res.status(201).json(newPaymentMethod);
-    } catch (error) {
-        console.error('Error saving payment method:', error);
-        res.status(500).json({ message: 'Error saving payment method', error: error.message });
-    }
-});
+// Belirli bir ödeme yöntemini güncelle (opsiyonel)
+router.put('/:userId/:methodId', paymentMethodController.updatePaymentMethod);
 
-// Ödeme yöntemini kullanıcıya göre getirme endpoint'i
-router.get('/payment-method/:userId', async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-        const paymentMethods = await PaymentMethod.find({ userId }); // Kullanıcının ödeme yöntemlerini getir
-        if (paymentMethods.length > 0) {
-            res.status(200).json(paymentMethods);
-        } else {
-            res.status(404).json({ message: 'No payment methods found for this user' });
-        }
-    } catch (error) {
-        console.error('Error retrieving payment methods:', error);
-        res.status(500).json({ message: 'Error retrieving payment methods', error: error.message });
-    }
-});
+// Belirli bir ödeme yöntemini sil
+router.delete('/:userId/:methodId', paymentMethodController.deletePaymentMethod);
 
 module.exports = router;

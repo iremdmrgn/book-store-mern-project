@@ -1,16 +1,33 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { getImgUrl } from '../../utils/getImgUrl'
-import { removeFromFavorites, addToCart } from '../../redux/features/favorites/favoritesSlice'
 import { FiShoppingCart, FiHeart } from 'react-icons/fi'
+import { useAuth } from '../../context/AuthContext'
+import { addToCart } from '../../redux/features/cart/cartSlice'
+import { fetchFavorites, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice'
 
 const FavoritesPage = () => {
-  const favorites = useSelector(state => state.favorites.items)
+  const { currentUser } = useAuth()
   const dispatch = useDispatch()
+  const favorites = useSelector(state => state.favorites.items)
+  const loading = useSelector(state => state.favorites.loading)
+  const error = useSelector(state => state.favorites.error)
 
+  // Favoriler backend'den yüklensin
+  useEffect(() => {
+    if (currentUser && currentUser.uid) {
+      dispatch(fetchFavorites(currentUser.uid.trim()))
+    }
+  }, [currentUser, dispatch])
+
+  // Favoriden kaldırma işlemi için onay
   const handleRemove = (bookId) => {
-    dispatch(removeFromFavorites({ _id: bookId }))
+    if (window.confirm("Are you sure you want to remove this item from favorites?")) {
+      if (currentUser && currentUser.uid) {
+        dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: bookId }))
+      }
+    }
   }
 
   const handleAddToCart = (book) => {
@@ -18,11 +35,14 @@ const FavoritesPage = () => {
   }
 
   const handleStartShopping = () => {
-    window.location.href = "http://localhost:5173"; // Yönlendirme
+    window.location.href = "http://localhost:5173"
   }
 
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message ? error.message : JSON.stringify(error)}</div>
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 bg-[rgba(240,238,215,0.1)]"> {/* Even softer transparent background */}
+    <div className="max-w-xl mx-auto px-4 py-6 bg-[rgba(240,238,215,0.1)]">
       <h2 className="text-3xl font-semibold mb-6 text-center">Your Favorites</h2>
       {favorites.length > 0 ? (
         favorites.map(book => (
@@ -57,9 +77,9 @@ const FavoritesPage = () => {
                 {/* Add to Cart Button */}
                 <button
                   onClick={() => handleAddToCart(book)}
-                  className="mt-4 px-4 py-1 bg-yellow-500 text-black rounded-full hover:bg-yellow-600 focus:outline-none transition-colors flex items-center gap-2" // Gap 2 added for more space
+                  className="mt-4 px-4 py-1 bg-yellow-500 text-black font-semibold rounded-full hover:bg-yellow-600 transition-colors flex items-center gap-2"
                 >
-                  <FiShoppingCart /> {/* Shopping cart icon */}
+                  <FiShoppingCart /> 
                   <span className="truncate">Add to Cart</span>
                 </button>
               </div>
@@ -68,15 +88,11 @@ const FavoritesPage = () => {
         ))
       ) : (
         <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl shadow-lg bg-gray-50">
-          {/* Heart Icon */}
           <FiHeart className="text-6xl text-red-500 mb-4" />
-          
           <p className="text-center text-gray-600 text-lg font-medium">
             There are no products in your favorites list. <br />
             Thousands of products we think you'll love are waiting for you at <span className="font-semibold text-blue-600">Leaf&Chapter</span>
           </p>
-
-          {/* Start Shopping Button */}
           <button 
             onClick={handleStartShopping}
             className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors"

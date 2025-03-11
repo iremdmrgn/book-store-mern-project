@@ -1,44 +1,84 @@
-import React, { useState } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { getImgUrl } from '../../utils/getImgUrl';
-import { clearCart, removeFromCart, increaseQuantity, decreaseQuantity } from '../../redux/features/cart/cartSlice';
+
+import { 
+  fetchCart,
+  removeFromCartAsync,
+  updateCartItemAsync,
+  clearCartAsync
+} from '../../redux/features/cart/cartSlice';
 import { ShoppingCartIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../context/AuthContext'; // Oturum açan kullanıcıyı almak için
 
 const CartPage = () => {
-  const cartItems = useSelector(state => state.cart.cartItems);
+  const { currentUser } = useAuth();
   const dispatch = useDispatch();
-  const [showAlert, setShowAlert] = useState(false); // For showing the alert
+  const { cartItems, loading, error } = useSelector(state => state.cart);
+  const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
 
+  const MAX_QUANTITY = 10;
   const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2);
 
+  // Backend'den sepet verilerini yükle (Firebase uid kullanarak ve trim uygulanarak)
+  useEffect(() => {
+    if (currentUser && currentUser.uid) {
+      dispatch(fetchCart(currentUser.uid.trim()));
+    }
+  }, [currentUser, dispatch]);
+
+  // Remove işlemi: Backend'e asenkron istek gönder
   const handleRemoveFromCart = (product) => {
-    dispatch(removeFromCart(product));
+    dispatch(removeFromCartAsync({ userId: currentUser.uid.trim(), itemId: product._id }));
   };
 
+  // Sepeti tamamen temizle (backend)
   const handleClearCart = () => {
-    dispatch(clearCart());
+    dispatch(clearCartAsync(currentUser.uid.trim()));
   };
 
-  const MAX_QUANTITY = 10; // Define the maximum quantity limit
-
+  // Miktarı artırma: Yeni miktarı backend'e gönder
   const handleIncreaseQuantity = (product) => {
     if (product.quantity < MAX_QUANTITY) {
-      dispatch(increaseQuantity(product));
+      dispatch(updateCartItemAsync({ 
+        userId: currentUser.uid.trim(), 
+        itemId: product._id, 
+        quantity: product.quantity + 1 
+      }));
     } else {
       setAlertMessage(`You can only add up to ${MAX_QUANTITY} items of this product.`);
       setShowAlert(true);
     }
   };
 
+  // Miktarı azaltma: Yeni miktarı backend'e gönder
   const handleDecreaseQuantity = (product) => {
-    dispatch(decreaseQuantity(product));
+    if (product.quantity > 1) {
+      dispatch(updateCartItemAsync({ 
+        userId: currentUser.uid.trim(), 
+        itemId: product._id, 
+        quantity: product.quantity - 1 
+      }));
+    }
   };
 
   const closeAlert = () => {
     setShowAlert(false);
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+  
+  if (error) {
+    return (
+      <div className="text-center text-red-600">
+        Error: {error.message ? error.message : JSON.stringify(error)}
+      </div>
+    );
+  }
 
   return (
     <div className="flex mt-6 h-auto flex-col overflow-hidden bg-white shadow-lg max-w-2xl mx-auto rounded-2xl p-8">
@@ -129,7 +169,9 @@ const CartPage = () => {
                         </button>
                       </div>
                       {/* Adjusted price */}
-                      <p className="text-lg font-semibold text-gray-800">${(product.newPrice * product.quantity).toFixed(2)}</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        ${(product.newPrice * product.quantity).toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 </li>
@@ -150,25 +192,24 @@ const CartPage = () => {
           <p>Subtotal</p>
           <p>${totalPrice ? totalPrice : 0}</p>
         </div>
-        <p className="mt-1 text-xs text-gray-200 mb-3">Shipping and taxes calculated at checkout.</p>
-
+        <p className="mt-1 text-xs text-gray-200 mb-3">
+          Shipping and taxes calculated at checkout.
+        </p>
         {/* Checkout Button */}
         <div className="mt-6">
           <Link
             to={cartItems.length > 0 ? "/checkout" : "#"}
-            className={`flex items-center justify-center rounded-lg px-7 py-3 text-sm font-medium text-white shadow-sm ${cartItems.length > 0 ? 'bg-indigo-900 hover:bg-indigo-800' : 'bg-indigo-900 cursor-not-allowed'}`}
+            className={`flex items-center justify-center rounded-lg px-7 py-3 text-sm font-medium text-white shadow-sm ${
+              cartItems.length > 0 ? 'bg-indigo-900 hover:bg-indigo-800' : 'bg-indigo-900 cursor-not-allowed'
+            }`}
           >
             Proceed to Checkout
           </Link>
         </div>
-
         {/* Continue Shopping Button */}
         <div className="mt-5 flex justify-center text-center text-xs text-gray-200">
           <Link to="/">
-            <button
-              type="button"
-              className="font-medium text-gray-400 hover:text-gray-300"
-            >
+            <button type="button" className="font-medium text-gray-400 hover:text-gray-300">
               Continue Shopping <span aria-hidden="true"> &rarr;</span>
             </button>
           </Link>

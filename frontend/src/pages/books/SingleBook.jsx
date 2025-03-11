@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiOutlineHeart, HiOutlineShare } from 'react-icons/hi2';
 import { useParams, Navigate } from 'react-router-dom';
 import { getImgUrl } from '../../utils/getImgUrl';
@@ -6,56 +6,94 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../../redux/features/cart/cartSlice';
 import { addToFavorites, removeFromFavorites } from '../../redux/features/favorites/favoritesSlice';
 import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
 
 const SingleBook = () => {
   const { id } = useParams();
   const { data: book, isLoading, isError, error } = useFetchBookByIdQuery(id);
-
   const dispatch = useDispatch();
   const favorites = useSelector((state) => state.favorites.items);
+  const { currentUser } = useAuth();
 
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
+  const [reviews, setReviews] = useState([]); // Reviews state
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
-  const [reviews, setReviews] = useState([]); // State to store reviews
 
   // Active tab state
   const [activeTab, setActiveTab] = useState('description');
+
+  // Yorum gönderme fonksiyonu
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (rating === 0) {
+      alert("Please provide a rating before submitting.");
+      return;
+    }
+    const newReview = {
+      bookId: book._id,
+      userId: currentUser.uid,
+      reviewer: currentUser.displayName || currentUser.email || "Anonymous",
+      rating,
+      text: reviewText,
+    };
+    try {
+      const response = await axios.post('http://localhost:5000/api/reviews', newReview);
+      // Yeni yorumu listenin başına ekleyin
+      setReviews([response.data, ...reviews]);
+      setReviewSubmitted(true);
+      setRating(0);
+      setReviewText('');
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert("Failed to submit review. Please try again.");
+    }
+  };
+
+  // Yorum silme fonksiyonu (veritabanından silme işlemi)
+  const handleDeleteReview = async (reviewId) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/reviews/${reviewId}`);
+      setReviews(reviews.filter(review => review._id !== reviewId));
+      alert("Review deleted successfully.");
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      alert("Failed to delete review. Please try again.");
+    }
+  };
+
+  // Belirli bir kitabın yorumlarını çekmek için useEffect
+  const fetchReviewsForBook = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`);
+      setReviews(response.data);
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (book) {
+      fetchReviewsForBook();
+    }
+  }, [book]);
 
   const handleAddToCart = (product) => {
     dispatch(addToCart(product));
   };
 
   const handleFavoriteToggle = (book) => {
-    const isFavorite = favorites.some(fav => fav.id === book.id);
-
-    if (isFavorite) {
+    const isFav = favorites.some(fav => fav.id === book.id);
+    if (isFav) {
       dispatch(removeFromFavorites(book.id));
     } else {
       dispatch(addToFavorites(book));
     }
   };
 
-  const handleReviewSubmit = (e) => {
-    e.preventDefault();
-
-    if (rating === 0) {
-      alert("Please provide a rating before submitting.");
-      return;
-    }
-
-    const newReview = {
-      rating,
-      text: reviewText,
-    };
-
-    // Add the new review to the reviews list
-    setReviews([...reviews, newReview]);
-    
-    console.log('Review submitted:', newReview);
-    setReviewSubmitted(true); // Mark review as submitted
-    setRating(0);
-    setReviewText('');
+  const handleBookClick = () => {
+    // Örneğin detay sayfasına yönlendirme
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -66,7 +104,7 @@ const SingleBook = () => {
   }
 
   if (!book) {
-    return <Navigate to="/" />;  // Redirect to homepage if no book is found
+    return <Navigate to="/" />;
   }
 
   return (
@@ -74,7 +112,7 @@ const SingleBook = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         <div className="w-64 h-auto overflow-hidden ml-4 relative">
           <img
-            src={book.coverImage ? getImgUrl(book.coverImage) : ''}
+            src={book.coverImage ? getImgUrl(book.coverImage).href : '/default-image.jpg'}
             alt={book.title}
             className="w-full h-full object-cover transition-all duration-300 hover:scale-105 rounded-lg shadow-lg"
           />
@@ -100,7 +138,7 @@ const SingleBook = () => {
           {/* Book Title */}
           <h1 className="text-4xl font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-300">{book.title}</h1>
 
-          {/* Book Author, Publisher, and Other Information */}
+          {/* Book Details */}
           <div className="text-sm text-gray-600 space-y-2">
             <p><strong className="font-semibold text-gray-800">Author:</strong> {book.author || 'Unknown'}</p>
             <p><strong className="font-semibold text-gray-800">Publisher:</strong> {book.publisher || 'Unknown Publisher'}</p>
@@ -148,7 +186,6 @@ const SingleBook = () => {
           </button>
         </div>
 
-        {/* Conditional Rendering Based on Active Tab */}
         {activeTab === 'description' && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold text-gray-800">Description</h2>
@@ -174,7 +211,7 @@ const SingleBook = () => {
           <div className="mt-8">
             <h2 className="text-2xl font-semibold text-gray-800">Reviews</h2>
             {/* Review Form */}
-            <form onSubmit={handleReviewSubmit} className="space-y-6">
+            <form onSubmit={handleReviewSubmit} className="space-y-6 mt-4">
               <div>
                 <label htmlFor="rating" className="text-xl font-semibold text-gray-700">Rating</label>
                 <div className="flex gap-2 mt-2">
@@ -215,13 +252,23 @@ const SingleBook = () => {
             <div className="mt-8 space-y-4">
               {reviews.length > 0 ? (
                 reviews.map((review, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm">
-                    <div className="flex items-center gap-2 text-yellow-500">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className={`text-xl ${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
-                      ))}
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-yellow-500">
+                        {[...Array(5)].map((_, i) => (
+                          <span key={i} className={`text-xl ${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-gray-700"><strong>{review.reviewer}:</strong> {review.text}</p>
                     </div>
-                    <p className="mt-2 text-gray-700">{review.text}</p>
+                    {currentUser && review.userId === currentUser.uid && (
+                      <button
+                        onClick={() => handleDeleteReview(review._id)}
+                        className="ml-4 text-red-600 text-sm"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 ))
               ) : (

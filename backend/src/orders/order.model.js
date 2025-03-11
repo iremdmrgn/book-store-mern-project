@@ -4,41 +4,84 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true, // Siparişin sahibi olan kullanıcı adı
+    required: true, // Sipariş sahibinin adı
   },
   email: {
     type: String,
-    required: true, // Siparişin sahibinin e-posta adresi
+    required: true, // Sipariş sahibinin e-posta adresi
   },
   address: {
     city: {
       type: String,
       required: true, // Şehir adı
     },
-    country: String, // Ülke (isteğe bağlı)
-    state: String, // Eyalet (isteğe bağlı)
-    zipcode: String, // Posta kodu (isteğe bağlı)
+    country: {
+      type: String,
+      default: "", // Ülke (isteğe bağlı)
+    },
+    state: {
+      type: String,
+      default: "", // Eyalet (isteğe bağlı)
+    },
+    zipcode: {
+      type: String,
+      default: "", // Posta kodu (isteğe bağlı)
+    },
   },
   phone: {
     type: Number,
     required: true, // Sipariş verenin telefon numarası
   },
-  productIds: [
+  // Siparişe ait ürün bilgilerini saklamak için "items" alanı oluşturabilirsiniz.
+  // Burada her ürün için, kitap ID'si, fiyatı ve miktarı gibi bilgiler yer alabilir.
+  items: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Book', // Sipariş edilen kitapların ID'leri
-      required: true,
-    },
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Book',
+        required: true,
+      },
+      title: {
+        type: String,
+        required: true,
+      },
+      coverImage: String,
+      price: {
+        type: Number,
+        required: true,
+      },
+      quantity: {
+        type: Number,
+        default: 1,
+      },
+    }
   ],
   totalPrice: {
     type: Number,
-    required: true, // Toplam fiyat
+    required: true, // Siparişin toplam fiyatı
   },
+  orderNumber: {
+    type: String,
+    unique: true,
+  },
+  status: {
+    type: String,
+    default: "Pending", // Sipariş durumu; gerekirse frontend'de bu alanı gizleyebilirsiniz.
+  }
 }, {
-  timestamps: true, // Siparişin oluşturulma tarihi ve güncellenme tarihi
+  timestamps: true, // Siparişin oluşturulma ve güncellenme tarihleri
 });
 
-// Modeli oluşturuyoruz
+// Pre-save hook: Eğer orderNumber tanımlı değilse, otomatik oluştur.
+orderSchema.pre('save', function(next) {
+  if (!this.orderNumber) {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomPart = Math.floor(Math.random() * 9000) + 1000; // 4 basamaklı rastgele sayı
+    this.orderNumber = `ORD-${datePart}-${randomPart}`;
+  }
+  next();
+});
+
 const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;
