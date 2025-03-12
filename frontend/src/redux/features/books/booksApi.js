@@ -52,7 +52,7 @@ const booksApi = createApi({
             }),
             invalidatesTags: ["Books"]
         }),
-        // Arama endpoint'i eklendi
+        // Arama endpoint'i
         searchBooks: builder.query({
             query: (query) => ({
                 url: `/search?query=${query}`,

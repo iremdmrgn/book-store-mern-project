@@ -18,7 +18,7 @@ const news = [
     description:
       "World leaders gather at the Global Climate Summit to discuss urgent strategies to combat climate change, focusing on reducing carbon emissions and fostering renewable energy solutions.",
     image: news1,
-    portalLink: "https://www.bbc.com/news/science-environment-56901261", // BBC link
+    portalLink: "https://www.bbc.com/news/science-environment-56901261",
   },
   {
     id: 2,
@@ -26,7 +26,7 @@ const news = [
     description:
       "A major breakthrough in artificial intelligence has been announced by researchers, with new advancements promising to revolutionize industries from healthcare to finance.",
     image: news2,
-    portalLink: "https://www.wired.com/story/mira-murati-thinking-machines-lab/", // Wired link
+    portalLink: "https://www.wired.com/story/mira-murati-thinking-machines-lab/",
   },
   {
     id: 3,
@@ -34,7 +34,8 @@ const news = [
     description:
       "A look at how AI technologies are transforming the healthcare sector, from diagnostics to personalized treatments.",
     image: news3,
-    portalLink: "https://www.wired.com/story/ai-powered-medicine-healthcare/", // Wired link
+    // Örnek: CNN üzerinden sağlık alanındaki genel bir haber sayfası
+    portalLink: "https://www.cnn.com/health",
   },
   {
     id: 4,
@@ -42,7 +43,8 @@ const news = [
     description:
       "Exploring the role AI is playing in shaping the future job market, from automation to new opportunities in tech industries.",
     image: news4,
-    portalLink: "https://www.wired.com/story/ai-future-of-work/", // Wired link
+    // Örnek: CNN üzerinden iş dünyasıyla ilgili genel bir haber sayfası
+    portalLink: "https://www.cnn.com/business",
   },
   {
     id: 5,
@@ -50,7 +52,8 @@ const news = [
     description:
       "How the rise of AI, IoT, and automation is reshaping urban life and making cities more efficient, sustainable, and connected.",
     image: news2,
-    portalLink: "https://www.wired.com/story/smart-cities-ai-iot/", // Wired link
+    // Örnek: CNN üzerinden teknoloji alanındaki genel bir haber sayfası
+    portalLink: "https://www.cnn.com/tech",
   },
 ];
 
@@ -96,14 +99,12 @@ const News = () => {
         modules={[Pagination, Navigation]}
         className="mySwiper"
       >
-        {news.map((item, index) => (
-          <SwiperSlide key={index}>
+        {news.map((item) => (
+          <SwiperSlide key={item.id}>
             <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-6 rounded-xl overflow-hidden shadow-lg bg-gray-100 border-2 border-black p-4">
               {/* Content */}
               <div className="py-0 px-4">
-                <h3
-                  className="text-base font-medium hover:text-blue-500 mb-2 cursor-pointer"
-                >
+                <h3 className="text-base font-medium hover:text-blue-500 mb-2 cursor-pointer">
                   <a href={item.portalLink} target="_blank" rel="noopener noreferrer">
                     {item.title}
                   </a>
@@ -111,7 +112,6 @@ const News = () => {
                 <div className="w-8 h-[3px] bg-primary mb-3"></div>
                 <p className="text-xs text-gray-600">{item.description}</p>
               </div>
-
               {/* Image */}
               <div className="flex-shrink-0 w-[150px] h-[150px] rounded-full overflow-hidden shadow-md">
                 <img

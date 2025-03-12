@@ -51,18 +51,6 @@ const SingleBook = () => {
     }
   };
 
-  // Yorum silme fonksiyonu (veritabanından silme işlemi)
-  const handleDeleteReview = async (reviewId) => {
-    try {
-      await axios.delete(`http://localhost:5000/api/reviews/${reviewId}`);
-      setReviews(reviews.filter(review => review._id !== reviewId));
-      alert("Review deleted successfully.");
-    } catch (err) {
-      console.error("Error deleting review:", err);
-      alert("Failed to delete review. Please try again.");
-    }
-  };
-
   // Belirli bir kitabın yorumlarını çekmek için useEffect
   const fetchReviewsForBook = async () => {
     try {
@@ -252,25 +240,15 @@ const SingleBook = () => {
             <div className="mt-8 space-y-4">
               {reviews.length > 0 ? (
                 reviews.map((review, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 text-yellow-500">
-                        {[...Array(5)].map((_, i) => (
-                          <span key={i} className={`text-xl ${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
-                        ))}
-                      </div>
-                      <p className="mt-2 text-gray-700"><strong>{review.reviewer}:</strong> {review.text}</p>
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2 text-yellow-500">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className={`text-xl ${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
+                      ))}
                     </div>
-                    {currentUser && review.userId === currentUser.uid && (
-                      <button
-                        onClick={() => handleDeleteReview(review._id)}
-                        className="ml-4 text-red-600 text-sm"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <p className="mt-2 text-gray-700"><strong>{review.reviewer}:</strong> {review.text}</p>
                   </div>
-                ))
+              ))
               ) : (
                 <p className="text-gray-500">No reviews yet. Be the first to review this book!</p>
               )}

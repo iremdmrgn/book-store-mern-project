@@ -11,4 +11,7 @@ router.get('/user/:userId', reviewController.getReviewsByUser);
 // Bir kitaba ait yorumları getir
 router.get('/book/:bookId', reviewController.getReviewsByBook);
 
+
+
+
 module.exports = router;
