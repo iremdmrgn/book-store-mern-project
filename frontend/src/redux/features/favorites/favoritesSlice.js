@@ -13,7 +13,7 @@ export const fetchFavorites = createAsyncThunk(
   async (userId, thunkAPI) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/favorites/${userId}`);
-      return response.data.items;
+      return response.data; // response.data, favoriler nesnesidir (örneğin, { _id, userId, items })
     } catch (error) {
       return thunkAPI.rejectWithValue(error.response.data);
     }
@@ -26,7 +26,7 @@ export const addFavoriteAsync = createAsyncThunk(
   async ({ userId, item }, thunkAPI) => {
     try {
       const response = await axios.post(`http://localhost:5000/api/favorites/${userId}`, item);
-      return response.data.items;
+      return response.data; // Favoriler nesnesi
     } catch (error) {
       return thunkAPI.rejectWithValue(error.response.data);
     }
@@ -39,7 +39,7 @@ export const removeFavoriteAsync = createAsyncThunk(
   async ({ userId, itemId }, thunkAPI) => {
     try {
       const response = await axios.delete(`http://localhost:5000/api/favorites/${userId}/item/${itemId}`);
-      return response.data.items;
+      return response.data; // Favoriler nesnesi
     } catch (error) {
       return thunkAPI.rejectWithValue(error.response.data);
     }
@@ -52,7 +52,7 @@ export const clearFavoritesAsync = createAsyncThunk(
   async (userId, thunkAPI) => {
     try {
       const response = await axios.delete(`http://localhost:5000/api/favorites/${userId}`);
-      return response.data.items;
+      return response.data; // Favoriler nesnesi
     } catch (error) {
       return thunkAPI.rejectWithValue(error.response.data);
     }
@@ -63,7 +63,7 @@ const favoritesSlice = createSlice({
   name: 'favorites',
   initialState,
   reducers: {
-    // Lokal olarak favorilere ekleme işlemi (opsiyonel, backend asenkron thunk ile çalışırken genellikle kullanılmaz)
+    // Lokal olarak favorilere ekleme işlemi (opsiyonel)
     addToFavorites: (state, action) => {
       const exists = state.items.some(item => item._id === action.payload._id);
       if (!exists) {
@@ -100,7 +100,6 @@ const favoritesSlice = createSlice({
         timer: 1500
       });
     },
-    // Eğer favorilerden sepet işlemleri yapılacaksa, addToCart burada da kullanılabilir
     addToCart: (state, action) => {
       const existingCartItem = state.cartItems.find(item => item._id === action.payload._id);
       if (!existingCartItem) {
@@ -134,7 +133,7 @@ const favoritesSlice = createSlice({
       })
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        state.items = action.payload.items; // Favoriler nesnesinin items dizisini state'e aktar
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.loading = false;
@@ -147,14 +146,7 @@ const favoritesSlice = createSlice({
       })
       .addCase(addFavoriteAsync.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Added to Favorites",
-          showConfirmButton: false,
-          timer: 1500
-        });
+        state.items = action.payload.items;
       })
       .addCase(addFavoriteAsync.rejected, (state, action) => {
         state.loading = false;
@@ -167,15 +159,9 @@ const favoritesSlice = createSlice({
       })
       .addCase(removeFavoriteAsync.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Removed from Favorites",
-          showConfirmButton: false,
-          timer: 1500
-        });
+        state.items = action.payload.items;
       })
+      
       .addCase(removeFavoriteAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -187,7 +173,7 @@ const favoritesSlice = createSlice({
       })
       .addCase(clearFavoritesAsync.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        state.items = action.payload.items;
         Swal.fire({
           position: "top-end",
           icon: "success",

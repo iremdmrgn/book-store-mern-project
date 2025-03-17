@@ -1,4 +1,3 @@
-// src/favorites/favoritesController.js
 const Favorite = require('./Favorite');
 
 // Kullanıcının favorilerini getir (Eğer yoksa oluşturur)
@@ -17,12 +16,12 @@ exports.getFavorites = async (req, res) => {
 };
 
 // Favorilere ürün ekle
-// Duplicate key hatasını önlemek için findOneAndUpdate upsert kullanıyoruz.
+// Eklerken, kitap objesinin id'sini productId olarak atadığınızdan emin olun.
 exports.addFavorite = async (req, res) => {
   const { userId } = req.params;
-  const newItem = req.body; // newItem: productId, title, coverImage, newPrice gibi alanları içermeli.
+  const newItem = req.body; // newItem: { productId, title, coverImage, newPrice }
   try {
-    // $addToSet kullanarak, eğer aynı productId'ye sahip bir öğe yoksa ekler.
+    // Aynı productId'ye sahip öğe varsa eklemez.
     const favorites = await Favorite.findOneAndUpdate(
       { userId },
       { $addToSet: { items: newItem } },
@@ -34,16 +33,18 @@ exports.addFavorite = async (req, res) => {
   }
 };
 
-// Favorilerden bir ürünü sil
+// Favorilerden ürünü sil (productId üzerinden)
+// Değişiklik: Eğer ürünün productId'si mevcut değilse, _id üzerinden de eşleşme yapıyoruz.
 exports.removeFavorite = async (req, res) => {
   const { userId, itemId } = req.params;
   try {
-    const favorites = await Favorite.findOne({ userId });
+    // Favori öğesini, alt belge içindeki productId veya _id alanına göre kaldırıyoruz.
+    const favorites = await Favorite.findOneAndUpdate(
+      { userId },
+      { $pull: { items: { $or: [{ productId: itemId }, { _id: itemId }] } } },
+      { new: true }
+    );
     if (!favorites) return res.status(404).json({ message: 'Favorites not found' });
-    
-    // Mongoose'un pull() metodunu kullanarak silme işlemi yapıyoruz.
-    favorites.items.pull(itemId);
-    await favorites.save();
     res.status(200).json(favorites);
   } catch (error) {
     res.status(500).json({ message: error.message });

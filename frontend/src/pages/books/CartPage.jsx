@@ -187,7 +187,7 @@ const CartPage = () => {
       </div>
 
       {/* Cart Summary */}
-      <div className="border-t border-gray-300 px-5 py-4 w-full mt-6 rounded-b-xl bg-gradient-to-r from-indigo-900 to-indigo-700 text-white">
+      <div className="border-t border-gray-300 px-5 py-4 w-full mt-6 rounded-b-xl bg-gradient-to-r from-indigo-700 to-indigo-700 text-white">
         <div className="flex justify-between text-lg font-semibold mb-5 w-full">
           <p>Subtotal</p>
           <p>${totalPrice ? totalPrice : 0}</p>
@@ -200,7 +200,7 @@ const CartPage = () => {
           <Link
             to={cartItems.length > 0 ? "/checkout" : "#"}
             className={`flex items-center justify-center rounded-lg px-7 py-3 text-sm font-medium text-white shadow-sm ${
-              cartItems.length > 0 ? 'bg-indigo-900 hover:bg-indigo-800' : 'bg-indigo-900 cursor-not-allowed'
+              cartItems.length > 0 ? 'bg-indigo-600 ' : 'bg-indigo-800 cursor-not-allowed'
             }`}
           >
             Proceed to Checkout
@@ -209,7 +209,7 @@ const CartPage = () => {
         {/* Continue Shopping Button */}
         <div className="mt-5 flex justify-center text-center text-xs text-gray-200">
           <Link to="/">
-            <button type="button" className="font-medium text-gray-400 hover:text-gray-300">
+            <button type="button" className="font-medium text-gray-200 ">
               Continue Shopping <span aria-hidden="true"> &rarr;</span>
             </button>
           </Link>

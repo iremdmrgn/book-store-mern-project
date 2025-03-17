@@ -163,13 +163,7 @@ const cartSlice = createSlice({
       .addCase(clearCartAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.cartItems = action.payload;
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Cart Cleared",
-          showConfirmButton: false,
-          timer: 1500
-        });
+        // "Cart Cleared" popup'ını kaldırdık.
       })
       .addCase(clearCartAsync.rejected, (state, action) => {
         state.loading = false;
@@ -183,19 +177,13 @@ const cartSlice = createSlice({
       .addCase(removeFromCartAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.cartItems = action.payload;
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Product Removed from the Cart",
-          showConfirmButton: false,
-          timer: 1500
-        });
+       
       })
       .addCase(removeFromCartAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      // updateCartItemAsync durumları
+      // updateCartItemAsync durumları (Cart Item Updated alert kaldırıldı)
       .addCase(updateCartItemAsync.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -203,13 +191,6 @@ const cartSlice = createSlice({
       .addCase(updateCartItemAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.cartItems = action.payload;
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Cart Item Updated",
-          showConfirmButton: false,
-          timer: 1500
-        });
       })
       .addCase(updateCartItemAsync.rejected, (state, action) => {
         state.loading = false;

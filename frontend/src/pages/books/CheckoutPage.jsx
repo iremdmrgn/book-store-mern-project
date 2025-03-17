@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -8,13 +8,14 @@ import { useCreateOrderMutation } from '../../redux/features/orders/ordersApi';
 import { Link } from 'react-router-dom';
 
 // Importing necessary actions
-import { clearCart, removeFromCart, increaseQuantity, decreaseQuantity } from '../../redux/features/cart/cartSlice';
+import { clearCart, clearCartAsync, removeFromCart, increaseQuantity, decreaseQuantity } from '../../redux/features/cart/cartSlice';
 
 // Importing the utility function for image URLs
 import { getImgUrl } from '../../utils/getImgUrl';
 
 const CheckoutPage = () => {
     const cartItems = useSelector(state => state.cart.cartItems);
+    const dispatch = useDispatch();
     const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2); // Adjust totalPrice calculation to account for quantity
     const { currentUser } = useAuth();
     const navigate = useNavigate();
@@ -42,6 +43,9 @@ const CheckoutPage = () => {
 
         try {
             await createOrder(newOrder).unwrap();
+            // Veritabanındaki sepeti temizlemek için clearCartAsync aksiyonunu, currentUser.uid ile dispatch ediyoruz.
+            dispatch(clearCartAsync(currentUser.uid));
+
             Swal.fire({
                 title: 'Confirmed Order',
                 text: 'Your order has been placed successfully!',

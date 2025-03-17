@@ -1,4 +1,3 @@
-// src/favorites/favorites.route.js
 const express = require('express');
 const router = express.Router();
 const favoritesController = require('./favoritesController');
@@ -9,7 +8,7 @@ router.get('/:userId', favoritesController.getFavorites);
 // Favorilere ürün ekle
 router.post('/:userId', favoritesController.addFavorite);
 
-// Favorilerden bir ürünü sil (itemId ile)
+// Favorilerden bir ürünü sil (productId üzerinden)
 router.delete('/:userId/item/:itemId', favoritesController.removeFavorite);
 
 // Tüm favorileri temizle

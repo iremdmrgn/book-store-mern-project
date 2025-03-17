@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getImgUrl } from "../../utils/getImgUrl";
 import axios from "axios";
+import { FaEdit } from "react-icons/fa";
 
 const Profile = () => {
   const { currentUser, logout } = useAuth();
@@ -14,7 +15,7 @@ const Profile = () => {
   const [payments, setPayments] = useState([]);
   const [favorites, setFavorites] = useState([]); // favorites state remains unchanged
 
-  // Address form state
+  // Address form state (for adding new address)
   const [newAddressTitle, setNewAddressTitle] = useState("");
   const [newStreet, setNewStreet] = useState("");
   const [newCity, setNewCity] = useState("");
@@ -23,7 +24,7 @@ const Profile = () => {
   const [newPostalCode, setNewPostalCode] = useState("");
   const [newCountry, setNewCountry] = useState("");
 
-  // Payment form state
+  // Payment form state (for adding new payment)
   const [cardNumber, setCardNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
@@ -43,6 +44,49 @@ const Profile = () => {
       window.location.href = "/login";
     }
   }, [currentUser]);
+
+  // Kullanıcı bilgileri için
+  const userName = currentUser?.displayName
+    ? currentUser.displayName.split(" ")
+    : [];
+  const firstNameDisplay = userName[0] || currentUser?.email || "";
+  const lastNameDisplay = userName[1] || "";
+
+  // Editable states for user information
+  const [editableFirstName, setEditableFirstName] = useState(firstNameDisplay);
+  const [editableLastName, setEditableLastName] = useState(lastNameDisplay);
+  const [editableEmail, setEditableEmail] = useState(currentUser?.email || "");
+  const [editablePhone, setEditablePhone] = useState(currentUser?.phone || "");
+
+  // Function to update user information to backend
+  const handleUpdateUser = async () => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/account/${currentUser.uid.trim()}`,
+        {
+          firstName: editableFirstName,
+          lastName: editableLastName,
+          email: editableEmail,
+          phone: editablePhone,
+        }
+      );
+      Swal.fire({
+        icon: "success",
+        title: "Information Updated",
+        text: "Your information has been updated successfully",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+      // Optionally update your context or global state here with response.data
+    } catch (err) {
+      console.error("Error updating user:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: "Please try again.",
+      });
+    }
+  };
 
   // --- Address Operations ---
   const fetchAddresses = async () => {
@@ -140,7 +184,82 @@ const Profile = () => {
       });
     }
   };
-  // --- Address Operations End ---
+
+  // --- Edit Address States and Functions ---
+  const [editAddressId, setEditAddressId] = useState(null);
+  const [editAddressTitle, setEditAddressTitle] = useState("");
+  const [editStreet, setEditStreet] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editDistrict, setEditDistrict] = useState("");
+  const [editNeighborhood, setEditNeighborhood] = useState("");
+  const [editPostalCode, setEditPostalCode] = useState("");
+  const [editCountry, setEditCountry] = useState("");
+
+  const startEditAddress = (address) => {
+    setEditAddressId(address._id);
+    setEditAddressTitle(address.title);
+    setEditStreet(address.street);
+    setEditCity(address.city);
+    setEditDistrict(address.district);
+    setEditNeighborhood(address.neighborhood);
+    setEditPostalCode(address.postalCode);
+    setEditCountry(address.country);
+  };
+
+  const cancelEditAddress = () => {
+    setEditAddressId(null);
+    setEditAddressTitle("");
+    setEditStreet("");
+    setEditCity("");
+    setEditDistrict("");
+    setEditNeighborhood("");
+    setEditPostalCode("");
+    setEditCountry("");
+  };
+
+  const handleUpdateAddress = async (addressId) => {
+    if (
+      editAddressTitle.trim() !== "" &&
+      editStreet.trim() !== "" &&
+      editCity.trim() !== "" &&
+      editDistrict.trim() !== "" &&
+      editNeighborhood.trim() !== "" &&
+      editPostalCode.trim() !== "" &&
+      editCountry.trim() !== ""
+    ) {
+      const updatedAddress = {
+        title: editAddressTitle,
+        street: editStreet,
+        city: editCity,
+        district: editDistrict,
+        neighborhood: editNeighborhood,
+        postalCode: editPostalCode,
+        country: editCountry,
+      };
+      try {
+        await axios.put(
+          `http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`,
+          updatedAddress
+        );
+        fetchAddresses();
+        cancelEditAddress();
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Address Updated",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      } catch (err) {
+        console.error("Error updating address:", err);
+        Swal.fire({
+          icon: "error",
+          title: "Failed to update address",
+          text: "Please try again.",
+        });
+      }
+    }
+  };
 
   // --- Payment Methods Operations ---
   const fetchPaymentMethods = async () => {
@@ -229,7 +348,67 @@ const Profile = () => {
       });
     }
   };
-  // --- Payment Methods Operations End ---
+
+  // --- Edit Payment States and Functions ---
+  const [editPaymentId, setEditPaymentId] = useState(null);
+  const [editCardNumber, setEditCardNumber] = useState("");
+  const [editExpiryDate, setEditExpiryDate] = useState("");
+  const [editCvv, setEditCvv] = useState("");
+  const [editCardHolder, setEditCardHolder] = useState("");
+
+  const startEditPayment = (payment) => {
+    setEditPaymentId(payment._id);
+    setEditCardNumber(payment.cardNumber);
+    setEditExpiryDate(payment.expiryDate);
+    setEditCvv(payment.cvv);
+    setEditCardHolder(payment.cardHolder);
+  };
+
+  const cancelEditPayment = () => {
+    setEditPaymentId(null);
+    setEditCardNumber("");
+    setEditExpiryDate("");
+    setEditCvv("");
+    setEditCardHolder("");
+  };
+
+  const handleUpdatePayment = async (paymentId) => {
+    if (
+      editCardNumber.trim() !== "" &&
+      editExpiryDate.trim() !== "" &&
+      editCvv.trim() !== "" &&
+      editCardHolder.trim() !== ""
+    ) {
+      const updatedPayment = {
+        cardNumber: editCardNumber,
+        expiryDate: editExpiryDate,
+        cvv: editCvv,
+        cardHolder: editCardHolder,
+      };
+      try {
+        await axios.put(
+          `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}/${paymentId}`,
+          updatedPayment
+        );
+        fetchPaymentMethods();
+        cancelEditPayment();
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Payment Method Updated",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      } catch (err) {
+        console.error("Error updating payment method:", err);
+        Swal.fire({
+          icon: "error",
+          title: "Failed to update payment method",
+          text: "Please try again.",
+        });
+      }
+    }
+  };
 
   // Review silme fonksiyonu
   const handleDeleteReview = async (reviewId) => {
@@ -294,12 +473,6 @@ const Profile = () => {
     navigate("/login");
   };
 
-  const userName = currentUser?.displayName
-    ? currentUser.displayName.split(" ")
-    : [];
-  const firstName = userName[0] || currentUser?.email || "";
-  const lastName = userName[1] || "";
-
   // Example: Order details pop-up (Orders tab)
   const handleOrderClick = (order) => {
     Swal.fire({
@@ -345,12 +518,12 @@ const Profile = () => {
 
       <div className="flex items-center mt-4">
         <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white text-xl font-semibold">
-          {firstName[0]}
-          {lastName[0]}
+          {firstNameDisplay[0]}
+          {lastNameDisplay[0]}
         </div>
         <div className="ml-4">
           <p className="font-semibold text-lg">
-            {firstName} {lastName}
+            {firstNameDisplay} {lastNameDisplay}
           </p>
         </div>
       </div>
@@ -366,7 +539,12 @@ const Profile = () => {
           ].map(({ key, label, icon }) => (
             <button
               key={key}
-              onClick={() => setSelectedTab(key)}
+              onClick={() => {
+                setSelectedTab(key);
+                // reset any edit states when switching tabs
+                cancelEditAddress();
+                cancelEditPayment();
+              }}
               className={`px-4 py-3 text-lg font-semibold transition-all duration-300 ease-in-out w-full rounded-lg flex items-center justify-start ${
                 selectedTab === key
                   ? "bg-blue-700 text-white shadow-lg"
@@ -389,9 +567,17 @@ const Profile = () => {
           {/* Payment Methods Tab */}
           {selectedTab === "payment" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
-                Your Payment Methods
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-3xl font-semibold text-gray-800">
+                  Your Payment Methods
+                </h3>
+                <button
+                  onClick={() => setSelectedTab("addPayment")}
+                  className="px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 shadow-md"
+                >
+                  Add New Payment Method
+                </button>
+              </div>
               <div className="grid gap-4">
                 {payments.length === 0 ? (
                   <p>No payment methods added.</p>
@@ -399,32 +585,109 @@ const Profile = () => {
                   payments.map((payment) => (
                     <div
                       key={payment._id}
-                      className="p-4 bg-gray-100 rounded-lg mb-4"
+                      className="p-4 bg-gray-100 rounded-lg mb-4 relative"
                     >
-                      <p className="font-semibold">
-                        Cardholder: {payment.cardHolder}
-                      </p>
-                      <p>
-                        Card Number: **** **** ****{" "}
-                        {payment.cardNumber.slice(-4)}
-                      </p>
-                      <p>Expiry Date: {payment.expiryDate}</p>
-                      <button
-                        onClick={() => handleDeletePayment(payment._id)}
-                        className="mt-2 text-red-600"
-                      >
-                        Delete Payment
-                      </button>
+                      {editPaymentId === payment._id ? (
+                        <div>
+                          <div className="grid gap-2">
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Card Number
+                              </label>
+                              <input
+                                type="text"
+                                value={editCardNumber}
+                                onChange={(e) =>
+                                  setEditCardNumber(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Expiry Date
+                              </label>
+                              <input
+                                type="text"
+                                value={editExpiryDate}
+                                onChange={(e) =>
+                                  setEditExpiryDate(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                CVV
+                              </label>
+                              <input
+                                type="text"
+                                value={editCvv}
+                                onChange={(e) => setEditCvv(e.target.value)}
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Cardholder Name
+                              </label>
+                              <input
+                                type="text"
+                                value={editCardHolder}
+                                onChange={(e) =>
+                                  setEditCardHolder(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-2 flex space-x-2">
+                            <button
+                              onClick={() => handleUpdatePayment(payment._id)}
+                              className="px-3 py-1 bg-green-600 text-white rounded"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditPayment}
+                              className="px-3 py-1 bg-gray-400 text-white rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="absolute top-2 right-2">
+                            <button
+                              onClick={() => startEditPayment(payment)}
+                              className="text-blue-600"
+                            >
+                              <FaEdit size={24} />
+                            </button>
+                          </div>
+                          <p className="font-semibold">
+                            Cardholder: {payment.cardHolder}
+                          </p>
+                          <p>
+                            Card Number: **** **** ****{" "}
+                            {payment.cardNumber.slice(-4)}
+                          </p>
+                          <p>Expiry Date: {payment.expiryDate}</p>
+                          <div className="mt-2">
+                            <button
+                              onClick={() => handleDeletePayment(payment._id)}
+                              className="text-red-600"
+                            >
+                              Delete Payment
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
               </div>
-              <button
-                onClick={() => setSelectedTab("addPayment")}
-                className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
-              >
-                Add New Payment Method
-              </button>
             </div>
           )}
 
@@ -550,8 +813,8 @@ const Profile = () => {
                   </label>
                   <input
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    value={editableFirstName}
+                    onChange={(e) => setEditableFirstName(e.target.value)}
                     className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
                   />
                 </div>
@@ -561,8 +824,8 @@ const Profile = () => {
                   </label>
                   <input
                     type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    value={editableLastName}
+                    onChange={(e) => setEditableLastName(e.target.value)}
                     className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
                   />
                 </div>
@@ -572,8 +835,10 @@ const Profile = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter phone number"
+                    value={editablePhone}
+                    onChange={(e) => setEditablePhone(e.target.value)}
                     className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                    placeholder="Enter phone number"
                   />
                 </div>
                 <div className="flex flex-col">
@@ -582,13 +847,13 @@ const Profile = () => {
                   </label>
                   <input
                     type="email"
-                    value={currentUser?.email || ""}
-                    readOnly
+                    value={editableEmail}
+                    onChange={(e) => setEditableEmail(e.target.value)}
                     className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
                   />
                 </div>
                 <button
-                  onClick={() => alert("User information updated!")}
+                  onClick={handleUpdateUser}
                   className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
                 >
                   Update Information
@@ -599,10 +864,18 @@ const Profile = () => {
 
           {/* Addresses Tab */}
           {selectedTab === "address" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
-                Your Addresses
-              </h3>
+            <div className="p-6 border rounded-lg bg-white text-black shadow-lg relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-3xl font-semibold text-gray-800">
+                  Your Addresses
+                </h3>
+                <button
+                  onClick={() => setSelectedTab("addAddress")}
+                  className="px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 shadow-md"
+                >
+                  Add New Address
+                </button>
+              </div>
               <div className="grid gap-4">
                 {addresses.length === 0 ? (
                   <p>No addresses added.</p>
@@ -610,31 +883,146 @@ const Profile = () => {
                   addresses.map((address) => (
                     <div
                       key={address._id}
-                      className="p-4 bg-gray-100 rounded-lg mb-4"
+                      className="p-4 bg-gray-100 rounded-lg mb-4 relative"
                     >
-                      <p className="font-semibold">{address.title}</p>
-                      <p>{address.street}</p>
-                      <p>
-                        {address.city}, {address.district}, {address.neighborhood}
-                      </p>
-                      <p>{address.postalCode}</p>
-                      <p>{address.country}</p>
-                      <button
-                        onClick={() => handleDeleteAddress(address._id)}
-                        className="mt-2 text-red-600"
-                      >
-                        Delete Address
-                      </button>
+                      {editAddressId === address._id ? (
+                        <div>
+                          <div className="grid gap-2">
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Title
+                              </label>
+                              <input
+                                type="text"
+                                value={editAddressTitle}
+                                onChange={(e) =>
+                                  setEditAddressTitle(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Street
+                              </label>
+                              <input
+                                type="text"
+                                value={editStreet}
+                                onChange={(e) => setEditStreet(e.target.value)}
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                City
+                              </label>
+                              <input
+                                type="text"
+                                value={editCity}
+                                onChange={(e) => setEditCity(e.target.value)}
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                District
+                              </label>
+                              <input
+                                type="text"
+                                value={editDistrict}
+                                onChange={(e) =>
+                                  setEditDistrict(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Neighborhood
+                              </label>
+                              <input
+                                type="text"
+                                value={editNeighborhood}
+                                onChange={(e) =>
+                                  setEditNeighborhood(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Postal Code
+                              </label>
+                              <input
+                                type="text"
+                                value={editPostalCode}
+                                onChange={(e) =>
+                                  setEditPostalCode(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="block font-semibold text-gray-700">
+                                Country
+                              </label>
+                              <input
+                                type="text"
+                                value={editCountry}
+                                onChange={(e) =>
+                                  setEditCountry(e.target.value)
+                                }
+                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-2 flex space-x-2">
+                            <button
+                              onClick={() => handleUpdateAddress(address._id)}
+                              className="px-3 py-1 bg-green-600 text-white rounded"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditAddress}
+                              className="px-3 py-1 bg-gray-400 text-white rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="absolute top-2 right-2">
+                            <button
+                              onClick={() => startEditAddress(address)}
+                              className="text-blue-600"
+                            >
+                              <FaEdit size={24} />
+                            </button>
+                          </div>
+                          <p className="font-semibold">{address.title}</p>
+                          <p>{address.street}</p>
+                          <p>
+                            {address.city}, {address.district},{" "}
+                            {address.neighborhood}
+                          </p>
+                          <p>{address.postalCode}</p>
+                          <p>{address.country}</p>
+                          <div className="mt-2">
+                            <button
+                              onClick={() => handleDeleteAddress(address._id)}
+                              className="mt-2 text-red-600"
+                            >
+                              Delete Address
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
               </div>
-              <button
-                onClick={() => setSelectedTab("addAddress")}
-                className="mt-4 px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900"
-              >
-                Add New Address
-              </button>
             </div>
           )}
 
@@ -767,7 +1155,7 @@ const Profile = () => {
                           : {review.text}
                         </p>
                       </div>
-                      {currentUser && review.userId === currentUser.uid }
+                      {currentUser && review.userId === currentUser.uid}
                     </div>
                   ))
                 ) : (

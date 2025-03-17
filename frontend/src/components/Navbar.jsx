@@ -5,9 +5,11 @@ import { HiOutlineUser } from "react-icons/hi";
 import { GiBurningBook } from "react-icons/gi";
 import { FaUser } from "react-icons/fa";
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useAuth } from "../context/AuthContext";
 import { useFetchAllBooksQuery } from "../redux/features/books/booksApi"; // Added hook
+import { fetchCart } from "../redux/features/cart/cartSlice"; // Eklendi
+import { fetchFavorites } from "../redux/features/favorites/favoritesSlice"; // Yeni: Favoriler için thunk
 
 // Import the function to get image URLs like in BookCard
 import { getImgUrl } from '../utils/getImgUrl';
@@ -19,8 +21,20 @@ const Navbar = () => {
   const cartItems = useSelector((state) => state.cart.cartItems);
   const favorites = useSelector((state) => state.favorites.items);
   const { currentUser } = useAuth();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { data: books, isLoading } = useFetchAllBooksQuery(); // Fetch all books
+
+  // Total quantity: tüm ürünlerin quantity değerlerinin toplamı
+  const totalCartQuantity = cartItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
+
+  // Kullanıcı giriş yaptıktan sonra sepet ve favori verilerini güncelle
+  useEffect(() => {
+    if (currentUser && currentUser.uid) {
+      dispatch(fetchCart(currentUser.uid.trim()));
+      dispatch(fetchFavorites(currentUser.uid.trim()));
+    }
+  }, [currentUser, dispatch]);
 
   // Search handler to filter books based on search query
   const handleSearch = (e) => {
@@ -57,7 +71,7 @@ const Navbar = () => {
 
   return (
     <header
-      style={{ backgroundColor: "rgb(250, 248, 230)" }} // Even softer and lighter color
+      style={{ backgroundColor: "rgb(250, 248, 230)" }}
       className={`w-full fixed top-0 left-0 z-50 shadow-md transition-all duration-300 ${isVisible ? "opacity-100" : "opacity-0"} ${isVisible ? "transform-none" : "transform -translate-y-full"} shadow-lg`}
     >
       <nav className="flex justify-between items-center py-4 px-6 max-w-screen-xl mx-auto">
@@ -82,17 +96,15 @@ const Navbar = () => {
                 {filteredResults.map((book, index) => (
                   <Link
                     key={index}
-                    to={`/book/${book._id}`} // Updated to use correct book ID
+                    to={`/book/${book._id}`}
                     className="block px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                     onClick={() => handleSearchClick(book._id)}
                   >
-                    {/* Book Image */}
                     <img
-                      src={getImgUrl(book.coverImage) || 'path-to-default-image.png'}  // Ensured correct image URL
+                      src={getImgUrl(book.coverImage) || 'path-to-default-image.png'}
                       alt={book.title}
                       className="w-12 h-16 object-cover"
                     />
-                    {/* Book Title */}
                     <span>{book.title}</span>
                   </Link>
                 ))}
@@ -101,7 +113,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Move Icons to the far right with smaller gap */}
+        {/* Icons on the right */}
         <div className="flex items-center gap-2 ml-auto mt-12">
           {/* Favorites Icon */}
           <Link to="/favorites" className="relative flex items-center">
@@ -116,11 +128,9 @@ const Navbar = () => {
           {/* Cart Icon */}
           <Link to="/cart" className="relative flex items-center bg-primary p-1 sm:px-4 px-3 rounded-sm hover:bg-[#F9A825] transition duration-300">
             <HiOutlineShoppingCart className="text-2xl text-gray-700 hover:text-white transition duration-300" />
-            {cartItems.length > 0 ? (
-              <span className="text-sm font-semibold sm:ml-1 text-gray-700">{cartItems.length}</span>
-            ) : (
-              <span className="text-sm font-semibold sm:ml-1 text-gray-700">0</span>
-            )}
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1">
+              {totalCartQuantity}
+            </span>
           </Link>
 
           {/* Profile Icon */}

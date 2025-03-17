@@ -1,35 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { HiOutlineHeart, HiOutlineShare } from 'react-icons/hi2';
-import { useParams, Navigate } from 'react-router-dom';
-import { getImgUrl } from '../../utils/getImgUrl';
-import { useDispatch, useSelector } from 'react-redux';
-import { addToCart } from '../../redux/features/cart/cartSlice';
-import { addToFavorites, removeFromFavorites } from '../../redux/features/favorites/favoritesSlice';
-import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi';
-import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react'
+import { HiOutlineHeart, HiHeart, HiOutlineShare } from 'react-icons/hi2'
+import { useParams, Navigate } from 'react-router-dom'
+import { getImgUrl } from '../../utils/getImgUrl'
+import { useDispatch, useSelector } from 'react-redux'
+import { addToCartAsync } from '../../redux/features/cart/cartSlice'
+import { addFavoriteAsync, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice'
+import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi'
+import { useAuth } from '../../context/AuthContext'
+import axios from 'axios'
 
 const SingleBook = () => {
-  const { id } = useParams();
-  const { data: book, isLoading, isError, error } = useFetchBookByIdQuery(id);
-  const dispatch = useDispatch();
-  const favorites = useSelector((state) => state.favorites.items);
-  const { currentUser } = useAuth();
+  const { id } = useParams()
+  const { data: book, isLoading, isError, error } = useFetchBookByIdQuery(id)
+  const dispatch = useDispatch()
+  const favorites = useSelector((state) => state.favorites.items)
+  const { currentUser } = useAuth()
 
-  const [rating, setRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [reviews, setReviews] = useState([]); // Reviews state
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-
-  // Active tab state
-  const [activeTab, setActiveTab] = useState('description');
+  const [rating, setRating] = useState(0)
+  const [reviewText, setReviewText] = useState('')
+  const [reviews, setReviews] = useState([]) // Reviews state
+  const [reviewSubmitted, setReviewSubmitted] = useState(false)
+  const [activeTab, setActiveTab] = useState('description')
 
   // Yorum gönderme fonksiyonu
   const handleReviewSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (rating === 0) {
-      alert("Please provide a rating before submitting.");
-      return;
+      alert("Please provide a rating before submitting.")
+      return
     }
     const newReview = {
       bookId: book._id,
@@ -37,89 +35,104 @@ const SingleBook = () => {
       reviewer: currentUser.displayName || currentUser.email || "Anonymous",
       rating,
       text: reviewText,
-    };
-    try {
-      const response = await axios.post('http://localhost:5000/api/reviews', newReview);
-      // Yeni yorumu listenin başına ekleyin
-      setReviews([response.data, ...reviews]);
-      setReviewSubmitted(true);
-      setRating(0);
-      setReviewText('');
-    } catch (err) {
-      console.error("Error submitting review:", err);
-      alert("Failed to submit review. Please try again.");
     }
-  };
+    try {
+      const response = await axios.post('http://localhost:5000/api/reviews', newReview)
+      // Yeni yorumu listenin başına ekleyin
+      setReviews([response.data, ...reviews])
+      setReviewSubmitted(true)
+      setRating(0)
+      setReviewText('')
+    } catch (err) {
+      console.error("Error submitting review:", err)
+      alert("Failed to submit review. Please try again.")
+    }
+  }
 
   // Belirli bir kitabın yorumlarını çekmek için useEffect
   const fetchReviewsForBook = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`);
-      setReviews(response.data);
+      const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`)
+      setReviews(response.data)
     } catch (err) {
-      console.error("Error fetching reviews:", err);
+      console.error("Error fetching reviews:", err)
     }
-  };
+  }
 
   useEffect(() => {
     if (book) {
-      fetchReviewsForBook();
+      fetchReviewsForBook()
     }
-  }, [book]);
+  }, [book])
 
+  // Add to Cart işlemini veritabanına gönderecek asenkron thunk kullanılıyor.
   const handleAddToCart = (product) => {
-    dispatch(addToCart(product));
-  };
-
-  const handleFavoriteToggle = (book) => {
-    const isFav = favorites.some(fav => fav.id === book.id);
-    if (isFav) {
-      dispatch(removeFromFavorites(book.id));
-    } else {
-      dispatch(addToFavorites(book));
+    const productData = {
+      productId: product._id,
+      title: product.title,
+      coverImage: product.coverImage,
+      newPrice: product.newPrice,
+      quantity: 1,
     }
-  };
+    dispatch(addToCartAsync({ userId: currentUser.uid, item: productData }))
+  }
 
-  const handleBookClick = () => {
-    // Örneğin detay sayfasına yönlendirme
-  };
+  // Favori butonuna tıklandığında, favori ekleme/kaldırma işlemi tetikleniyor.
+  const handleFavoriteToggle = (book) => {
+    // favorites dizisinde favori veri yapısında productId alanını kontrol ediyoruz.
+    const isFav = favorites.some(fav => fav.productId === book._id)
+    if (isFav) {
+      dispatch(removeFavoriteAsync({ userId: currentUser.uid, itemId: book._id }))
+    } else {
+      const favoriteData = {
+        productId: book._id,
+        title: book.title,
+        coverImage: book.coverImage,
+        newPrice: book.newPrice,
+      }
+      dispatch(addFavoriteAsync({ userId: currentUser.uid, item: favoriteData }))
+    }
+  }
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <div>Loading...</div>
   
   if (isError) {
-    console.error('Error fetching book data:', error);
-    return <div>Error occurred: {error?.message || 'Unknown error'}</div>;
+    console.error('Error fetching book data:', error)
+    return <div>Error occurred: {error?.message || 'Unknown error'}</div>
   }
 
   if (!book) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" />
   }
 
   return (
     <div className="max-w-3xl mx-auto p-8 shadow-xl bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-        <div className="w-64 h-auto overflow-hidden ml-4 relative">
-          <img
-            src={book.coverImage ? getImgUrl(book.coverImage).href : '/default-image.jpg'}
-            alt={book.title}
-            className="w-full h-full object-cover transition-all duration-300 hover:scale-105 rounded-lg shadow-lg"
-          />
-
-          {/* Favorite Icon */}
-          <button
-            onClick={() => handleFavoriteToggle(book)}
-            className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-lg hover:bg-gray-200 focus:outline-none transition-all duration-300"
-          >
-            <HiOutlineHeart className={favorites.some(fav => fav.id === book.id) ? 'text-red-600' : 'text-gray-500'} />
-          </button>
-
-          {/* Share Icon */}
-          <button
-            onClick={() => alert("Sharing feature coming soon!")}
-            className="absolute top-16 right-2 p-2 bg-white rounded-full shadow-lg hover:bg-gray-200 focus:outline-none transition-all duration-300"
-          >
-            <HiOutlineShare className="text-gray-500" />
-          </button>
+        {/* Resim ve ikonlar yan yana, ikonlar üstte hizalı */}
+        <div className="flex items-start gap-4 ml-4">
+          <div className="w-64 h-auto overflow-hidden">
+            <img
+              src={book.coverImage ? getImgUrl(book.coverImage).href : '/default-image.jpg'}
+              alt={book.title}
+              className="w-full h-full object-cover transition-all duration-300 hover:scale-105 rounded-lg shadow-lg"
+            />
+          </div>
+          <div className="flex flex-col gap-4 justify-start">
+            <button
+              onClick={() => handleFavoriteToggle(book)}
+              className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-200 focus:outline-none transition-all duration-300"
+            >
+              {favorites.some(fav => fav.productId === book._id) 
+                ? <HiHeart className="text-red-600" /> 
+                : <HiOutlineHeart className="text-gray-500" />}
+            </button>
+            <button
+              onClick={() => alert("Sharing feature coming soon!")}
+              className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-200 focus:outline-none transition-all duration-300"
+            >
+              <HiOutlineShare className="text-gray-500" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -257,7 +270,7 @@ const SingleBook = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SingleBook;
+export default SingleBook

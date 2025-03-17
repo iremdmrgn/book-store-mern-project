@@ -1,4 +1,3 @@
-// src/cart/Cart.js
 const mongoose = require('mongoose');
 
 const CartItemSchema = new mongoose.Schema({
@@ -22,5 +21,10 @@ CartSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Kullanıcının sepetini temizlemek için statik metod
+CartSchema.statics.clearCartForUser = async function(userId) {
+  return this.findOneAndUpdate({ userId: userId.trim() }, { items: [] }, { new: true });
+};
 
 module.exports = mongoose.model('Cart', CartSchema);

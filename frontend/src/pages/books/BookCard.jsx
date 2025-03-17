@@ -1,5 +1,6 @@
 import React from 'react';
-import { FiShoppingCart, FiHeart } from 'react-icons/fi';
+import { FiShoppingCart } from 'react-icons/fi';
+import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
 import { getImgUrl } from '../../utils/getImgUrl';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,10 +14,10 @@ const BookCard = ({ book }) => {
   const { currentUser } = useAuth();
   const favorites = useSelector((state) => state.favorites.items);
 
-  // Favoriler arasında kontrol yaparken, hem favorite.productId hem de book._id tanımlı mı diye kontrol ediyoruz.
+  // isFavorite kontrolünü, favori objesinde productId varsa onu, yoksa _id'yi kullanarak yapıyoruz
   const isFavorite = favorites?.some((favorite) => {
-    if (!favorite.productId || !book._id) return false;
-    return favorite.productId.toString() === book._id.toString();
+    const favId = favorite.productId ? favorite.productId.toString() : favorite._id?.toString();
+    return favId === book._id.toString();
   });
 
   // Ürünü sepete eklemek için gerekli payload'ı oluşturun
@@ -35,9 +36,8 @@ const BookCard = ({ book }) => {
     }
   };
 
-  // Favorilere ekleme/kaldırma işlemi asenkron thunk ile yapılır.
+  // Favorilere ekleme/kaldırma işlemi
   const handleAddToFavorites = () => {
-    console.log("Favorite button clicked for:", book);
     if (currentUser && currentUser.uid) {
       if (isFavorite) {
         dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: book._id }));
@@ -99,9 +99,9 @@ const BookCard = ({ book }) => {
             className="absolute top-2 right-2 text-lg cursor-pointer z-10"
           >
             {isFavorite ? (
-              <FiHeart className="text-red-500 fill-current" />
+              <AiFillHeart className="text-red-500" />
             ) : (
-              <FiHeart className="text-red-500" />
+              <AiOutlineHeart className="text-red-500" />
             )}
           </button>
         </div>

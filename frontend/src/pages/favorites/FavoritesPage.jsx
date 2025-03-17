@@ -21,17 +21,25 @@ const FavoritesPage = () => {
     }
   }, [currentUser, dispatch])
 
-  // Favoriden kaldırma işlemi için onay
-  const handleRemove = (bookId) => {
-    if (window.confirm("Are you sure you want to remove this item from favorites?")) {
-      if (currentUser && currentUser.uid) {
-        dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: bookId }))
-      }
+  const handleRemove = (favoriteRecord) => {
+    if (currentUser && currentUser.uid) {
+      // Use productId if it exists; otherwise, use _id
+      const itemId = favoriteRecord.productId || favoriteRecord._id;
+      console.log("Removing favorite with id:", itemId);
+      dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId }));
     }
   }
-
-  const handleAddToCart = (book) => {
-    dispatch(addToCart(book))
+  
+  // Add to Cart işlemi için favori öğesinden gelen veriyi, cart'in beklediği yapıya dönüştürüyoruz.
+  const handleAddToCart = (fav) => {
+    const bookForCart = {
+      productId: fav.productId || fav._id, // Eğer productId yoksa favori kaydının _id'sini kullan
+      title: fav.title,
+      coverImage: fav.coverImage,
+      newPrice: fav.newPrice,
+      quantity: 1,
+    }
+    dispatch(addToCart(bookForCart))
   }
 
   const handleStartShopping = () => {
@@ -45,11 +53,11 @@ const FavoritesPage = () => {
     <div className="max-w-xl mx-auto px-4 py-6 bg-[rgba(240,238,215,0.1)]">
       <h2 className="text-3xl font-semibold mb-6 text-center">Your Favorites</h2>
       {favorites.length > 0 ? (
-        favorites.map(book => (
-          <div key={book._id} className="relative mb-6 p-4 border border-gray-300 rounded-xl shadow-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+        favorites.map(fav => (
+          <div key={fav._id} className="relative mb-6 p-4 border border-gray-300 rounded-xl shadow-lg bg-gray-50 hover:bg-gray-100 transition-colors">
             {/* Remove Button */}
             <button
-              onClick={() => handleRemove(book._id)}
+              onClick={() => handleRemove(fav)}
               className="absolute top-2 right-2 text-gray-500 hover:text-red-600 focus:outline-none"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,9 +67,9 @@ const FavoritesPage = () => {
 
             <div className="flex items-center gap-4">
               {/* Book Image */}
-              <Link to={`/books/${book._id}`} className="flex-shrink-0">
+              <Link to={`/books/${fav.productId}`} className="flex-shrink-0">
                 <img
-                  src={`${getImgUrl(book?.coverImage)}`}
+                  src={`${getImgUrl(fav?.coverImage)}`}
                   alt="Book cover"
                   className="w-24 h-32 object-cover rounded-lg shadow-md"
                 />
@@ -69,14 +77,14 @@ const FavoritesPage = () => {
 
               {/* Book Information */}
               <div className="flex-grow">
-                <Link to={`/books/${book._id}`}>
-                  <h3 className="text-lg font-semibold text-gray-800 hover:text-blue-600">{book?.title}</h3>
+                <Link to={`/books/${fav.productId}`}>
+                  <h3 className="text-lg font-semibold text-gray-800 hover:text-blue-600">{fav?.title}</h3>
                 </Link>
-                <p className="text-sm text-gray-600 mt-2">{book?.description}</p>
+                <p className="text-sm text-gray-600 mt-2">{fav?.description}</p>
 
                 {/* Add to Cart Button */}
                 <button
-                  onClick={() => handleAddToCart(book)}
+                  onClick={() => handleAddToCart(fav)}
                   className="mt-4 px-4 py-1 bg-yellow-500 text-black font-semibold rounded-full hover:bg-yellow-600 transition-colors flex items-center gap-2"
                 >
                   <FiShoppingCart /> 
