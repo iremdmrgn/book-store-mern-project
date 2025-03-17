@@ -22,7 +22,7 @@ const SingleBook = () => {
   const [reviewSubmitted, setReviewSubmitted] = useState(false)
   const [activeTab, setActiveTab] = useState('description')
 
-  // Yorum gönderme fonksiyonu
+  // Function to submit a review
   const handleReviewSubmit = async (e) => {
     e.preventDefault()
     if (rating === 0) {
@@ -38,7 +38,7 @@ const SingleBook = () => {
     }
     try {
       const response = await axios.post('http://localhost:5000/api/reviews', newReview)
-      // Yeni yorumu listenin başına ekleyin
+      // Prepend the new review to the current reviews
       setReviews([response.data, ...reviews])
       setReviewSubmitted(true)
       setRating(0)
@@ -49,7 +49,7 @@ const SingleBook = () => {
     }
   }
 
-  // Belirli bir kitabın yorumlarını çekmek için useEffect
+  // Fetch reviews for the book
   const fetchReviewsForBook = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`)
@@ -65,7 +65,7 @@ const SingleBook = () => {
     }
   }, [book])
 
-  // Add to Cart işlemini veritabanına gönderecek asenkron thunk kullanılıyor.
+  // Add to Cart function
   const handleAddToCart = (product) => {
     const productData = {
       productId: product._id,
@@ -77,9 +77,8 @@ const SingleBook = () => {
     dispatch(addToCartAsync({ userId: currentUser.uid, item: productData }))
   }
 
-  // Favori butonuna tıklandığında, favori ekleme/kaldırma işlemi tetikleniyor.
+  // Favorite toggle function
   const handleFavoriteToggle = (book) => {
-    // favorites dizisinde favori veri yapısında productId alanını kontrol ediyoruz.
     const isFav = favorites.some(fav => fav.productId === book._id)
     if (isFav) {
       dispatch(removeFavoriteAsync({ userId: currentUser.uid, itemId: book._id }))
@@ -108,7 +107,7 @@ const SingleBook = () => {
   return (
     <div className="max-w-3xl mx-auto p-8 shadow-xl bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-        {/* Resim ve ikonlar yan yana, ikonlar üstte hizalı */}
+        {/* Image and Icon Section */}
         <div className="flex items-start gap-4 ml-4">
           <div className="w-64 h-auto overflow-hidden">
             <img
@@ -249,17 +248,31 @@ const SingleBook = () => {
               </button>
             </form>
 
-            {/* Display Reviews */}
+            {/* Display Reviews with Delete Button */}
             <div className="mt-8 space-y-4">
               {reviews.length > 0 ? (
                 reviews.map((review, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm">
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm relative">
                     <div className="flex items-center gap-2 text-yellow-500">
                       {[...Array(5)].map((_, i) => (
                         <span key={i} className={`text-xl ${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
                       ))}
                     </div>
                     <p className="mt-2 text-gray-700"><strong>{review.reviewer}:</strong> {review.text}</p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await axios.delete(`http://localhost:5000/api/reviews/${review._id}`)
+                          setReviews(reviews.filter(r => r._id !== review._id))
+                        } catch (err) {
+                          console.error("Error deleting review:", err)
+                          alert("Failed to delete review. Please try again.")
+                        }
+                      }}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    >
+                      x
+                    </button>
                   </div>
               ))
               ) : (

@@ -140,13 +140,11 @@ const CartPage = () => {
                       </button>
                       <div>
                         <div className="flex flex-wrap justify-between text-sm font-semibold text-gray-900">
-                          <h3 className="truncate max-w-xs">
-                            <Link to="/" className="hover:text-indigo-500">{product?.title}</Link>
-                          </h3>
+                          <h2 className="truncate max-w-xs">
+                            <Link to="/" className="hover:text-indigo-700">{product?.title}</Link>
+                          </h2>
                         </div>
-                        <p className="mt-1 text-xs text-gray-600 capitalize">
-                          <strong>Category: </strong>{product?.category}
-                        </p>
+                        
                       </div>
                     </div>
 

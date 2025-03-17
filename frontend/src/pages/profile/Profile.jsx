@@ -6,6 +6,8 @@ import Swal from "sweetalert2";
 import { getImgUrl } from "../../utils/getImgUrl";
 import axios from "axios";
 import { FaEdit } from "react-icons/fa";
+import { PiShippingContainer } from "react-icons/pi";
+import ReactDOMServer from "react-dom/server";
 
 const Profile = () => {
   const { currentUser, logout } = useAuth();
@@ -45,7 +47,7 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  // Kullanıcı bilgileri için
+  // User information for display
   const userName = currentUser?.displayName
     ? currentUser.displayName.split(" ")
     : [];
@@ -77,7 +79,6 @@ const Profile = () => {
         showConfirmButton: false,
         timer: 1500,
       });
-      // Optionally update your context or global state here with response.data
     } catch (err) {
       console.error("Error updating user:", err);
       Swal.fire({
@@ -410,7 +411,63 @@ const Profile = () => {
     }
   };
 
-  // Review silme fonksiyonu
+  // --- Order Details Pop-up ---
+  const handleOrderClick = (order) => {
+    const iconHtml = ReactDOMServer.renderToStaticMarkup(
+      <PiShippingContainer size={24} />
+    );
+    let itemsHtml = "";
+    if (order.items && order.items.length > 0) {
+      order.items.forEach((item) => {
+        itemsHtml += `
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <img src="${
+              item.coverImage ? getImgUrl(item.coverImage).href : '/default-image.jpg'
+            }" alt="${item.title}" style="width:50px; height:70px; object-fit:cover; margin-right:10px; border-radius:4px;" />
+            <div>
+              <p style="margin:0; font-weight:bold;">${item.title}</p>
+              <p style="margin:0; font-size:0.9rem;">Quantity: ${item.quantity} x $${item.price.toFixed(2)}</p>
+            </div>
+          </div>
+        `;
+      });
+    }
+    Swal.fire({
+      title: `<strong>Order ${order.orderNumber ? order.orderNumber : order._id}</strong>`,
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Status:</strong> ${order.status || "Pending"}</p>
+          <p><strong>Total:</strong> ${
+            order.totalPrice !== undefined && order.totalPrice !== null
+              ? `$${order.totalPrice.toFixed(2)}`
+              : "N/A"
+          }</p>
+          <p><strong>Placed on:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+          <hr style="margin: 1rem 0;"/>
+          <p style="font-size: 1rem; font-weight:bold;">Items:</p>
+          ${itemsHtml}
+          <hr style="margin: 1rem 0;"/>
+          <p style="font-size: 1rem; font-weight:bold;">Shipping Details:</p>
+          <p style="font-size: 0.9rem; display: flex; align-items: center;">
+            ${iconHtml} <span style="margin-left: 8px;">${
+              order.trackingInfo ||
+              "Your order is being processed. Tracking info will be updated soon."
+            }</span>
+          </p>
+        </div>
+      `,
+      icon: "info",
+      width: "600px",
+      showCloseButton: true,
+      confirmButtonText: "Close",
+      customClass: {
+        title: "swal2-title-custom",
+        htmlContainer: "swal2-html-container-custom",
+      },
+    });
+  };
+
+  // --- Reviews Operations ---
   const handleDeleteReview = async (reviewId) => {
     try {
       await axios.delete(`http://localhost:5000/api/reviews/${reviewId}`);
@@ -432,8 +489,6 @@ const Profile = () => {
     }
   };
 
-  // Kullanıcıya ait review'leri getirme fonksiyonu
-  // Ek olarak, eğer review.bookTitle boş veya "Unknown Book" ise, ilgili kitabın başlığı alınarak güncelleniyor.
   const fetchUserReviews = async () => {
     try {
       const response = await axios.get(
@@ -472,45 +527,6 @@ const Profile = () => {
     await logout();
     navigate("/login");
   };
-
-  // Example: Order details pop-up (Orders tab)
-  const handleOrderClick = (order) => {
-    Swal.fire({
-      title: `<strong>Order ${
-        order.orderNumber ? order.orderNumber : order._id
-      }</strong>`,
-      html: `
-        <div style="text-align: left;">
-          <p><strong>Status:</strong> ${order.status || "Pending"}</p>
-          <p><strong>Total:</strong> ${
-            order.totalPrice !== undefined && order.totalPrice !== null
-              ? `$${order.totalPrice.toFixed(2)}`
-              : "N/A"
-          }</p>
-          <p><strong>Placed on:</strong> ${new Date(
-            order.createdAt
-          ).toLocaleDateString()}</p>
-          <hr style="margin: 1rem 0;"/>
-          <p style="font-size: 1rem;"><strong>Shipping Details:</strong></p>
-          <p style="font-size: 0.9rem;">${
-            order.trackingInfo ||
-            "Your order is being processed. Tracking info will be updated soon."
-          }</p>
-        </div>
-      `,
-      icon: "info",
-      width: "600px",
-      showCloseButton: true,
-      confirmButtonText: "Close",
-      customClass: {
-        title: "swal2-title-custom",
-        htmlContainer: "swal2-html-container-custom",
-      },
-    });
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading orders</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -1119,7 +1135,7 @@ const Profile = () => {
             </div>
           )}
 
-          {/* Reviews Tab – Sadece yorumların listelendiği alan, input/form bulunmuyor */}
+          {/* Reviews Tab */}
           {selectedTab === "reviews" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
               <h3 className="text-3xl font-semibold text-gray-800 mb-4">

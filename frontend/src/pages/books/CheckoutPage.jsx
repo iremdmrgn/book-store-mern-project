@@ -1,308 +1,642 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Swal from 'sweetalert2';
 import { useCreateOrderMutation } from '../../redux/features/orders/ordersApi';
-import { Link } from 'react-router-dom';
-
-// Importing necessary actions
-import { clearCart, clearCartAsync, removeFromCart, increaseQuantity, decreaseQuantity } from '../../redux/features/cart/cartSlice';
-
-// Importing the utility function for image URLs
+import axios from 'axios';
 import { getImgUrl } from '../../utils/getImgUrl';
+import { clearCartAsync } from '../../redux/features/cart/cartSlice';
 
 const CheckoutPage = () => {
-    const cartItems = useSelector(state => state.cart.cartItems);
-    const dispatch = useDispatch();
-    const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2); // Adjust totalPrice calculation to account for quantity
-    const { currentUser } = useAuth();
-    const navigate = useNavigate();
+  const cartItems = useSelector((state) => state.cart.cartItems);
+  const dispatch = useDispatch();
+  const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2);
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
-    const { register, handleSubmit, formState: { errors }, trigger, watch } = useForm();
-    const [step, setStep] = useState(1);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+    trigger,
+  } = useForm();
+  // 4 steps: 1. Personal Info, 2. Address, 3. Payment, 4. Review
+  const [step, setStep] = useState(1);
+  const [createOrder, { isLoading }] = useCreateOrderMutation();
 
-    const [createOrder, { isLoading }] = useCreateOrderMutation();
+  // -------------- ADDRESS STATES --------------
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressOption, setSelectedAddressOption] = useState('saved'); // 'saved' or 'new'
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState(null);
 
-    const onSubmit = async (data) => {
-        const newOrder = {
-            name: data.name,
-            email: data.email, // Send the edited email
-            address: {
-                street: data.address,
-                city: data.city,
-                state: data.state,
-                zipcode: data.zipcode,
-                country: data.country,
-            },
-            phone: data.phone,
-            productIds: cartItems.map(item => item?._id),
-            totalPrice,
+  useEffect(() => {
+    const fetchSavedAddresses = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/address/${currentUser.uid.trim()}`);
+        setSavedAddresses(response.data);
+        if (response.data.length > 0) {
+          setSelectedSavedAddress(response.data[0]);
+          setSelectedAddressOption('saved');
+        } else {
+          setSelectedAddressOption('new');
+        }
+      } catch (error) {
+        console.error("Error fetching addresses:", error);
+      }
+    };
+    if (currentUser?.uid) fetchSavedAddresses();
+  }, [currentUser]);
+
+  // -------------- PAYMENT STATES --------------
+  const [savedPayments, setSavedPayments] = useState([]);
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState('saved'); // 'saved' or 'new'
+  const [selectedSavedPayment, setSelectedSavedPayment] = useState(null);
+
+  useEffect(() => {
+    const fetchSavedPayments = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`);
+        setSavedPayments(response.data);
+        if (response.data.length > 0) {
+          setSelectedSavedPayment(response.data[0]);
+          setSelectedPaymentOption('saved');
+        } else {
+          setSelectedPaymentOption('new');
+        }
+      } catch (error) {
+        console.error("Error fetching payments:", error);
+      }
+    };
+    if (currentUser?.uid) fetchSavedPayments();
+  }, [currentUser]);
+
+  // Watch new address and payment fields
+  const watchedAddress = watch(["address", "city", "state", "zipcode", "country"]);
+  const watchedPayment = watch(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
+
+  const onSubmit = async (data) => {
+    // Determine delivery address
+    const deliveryAddress = selectedAddressOption === 'saved' && selectedSavedAddress
+      ? {
+          address: selectedSavedAddress.street,
+          city: selectedSavedAddress.city,
+          state: selectedSavedAddress.state || "",
+          zipcode: selectedSavedAddress.postalCode,
+          country: selectedSavedAddress.country,
+        }
+      : {
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zipcode: data.zipcode,
+          country: data.country,
         };
 
-        try {
-            await createOrder(newOrder).unwrap();
-            // Veritabanındaki sepeti temizlemek için clearCartAsync aksiyonunu, currentUser.uid ile dispatch ediyoruz.
-            dispatch(clearCartAsync(currentUser.uid));
-
-            Swal.fire({
-                title: 'Confirmed Order',
-                text: 'Your order has been placed successfully!',
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#aaa',
-                confirmButtonText: 'Go to Orders',
-                cancelButtonText: 'Return to Homepage'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    navigate('/orders');
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    window.location.href = 'http://localhost:5173';  // Redirect to homepage
-                }
-            });
-        } catch (error) {
-            console.error('Error placing order', error);
-            Swal.fire({
-                title: 'Order Failed',
-                text: 'Something went wrong. Please try again.',
-                icon: 'error',
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Okay',
-            });
+    // Determine payment method
+    const paymentMethod = selectedPaymentOption === 'saved' && selectedSavedPayment
+      ? {
+          cardHolder: selectedSavedPayment.cardHolder,
+          cardNumber: selectedSavedPayment.cardNumber,
+          expiryDate: selectedSavedPayment.expiryDate,
         }
+      : {
+          cardHolder: data.cardHolder,
+          cardNumber: data.cardNumber,
+          expiryDate: data.expiryDate,
+          cvv: data.cvv,
+        };
+
+    // Build orderData to match your backend schema.
+    const orderData = {
+      name: data.name,
+      email: data.email,
+      address: {
+        city: deliveryAddress.city,
+        state: deliveryAddress.state,
+        zipcode: deliveryAddress.zipcode,
+        country: deliveryAddress.country,
+      },
+      phone: Number(data.phone),
+      items: cartItems.map((item) => ({
+        productId: item._id,
+        title: item.title,
+        coverImage: item.coverImage,
+        price: item.newPrice,
+        quantity: item.quantity,
+      })),
+      totalPrice: Number(totalPrice),
     };
 
-    if (isLoading) return <div>Processing...</div>;
+    try {
+      await createOrder(orderData).unwrap();
+      dispatch(clearCartAsync(currentUser.uid));
 
-    const handleNextStep = async () => {
-        if (step === 1) {
-            const isValid = await trigger(["name", "phone"]);
-            if (isValid) {
-                setStep(2);
-            } else {
-                Swal.fire({
-                    title: 'Missing Information',
-                    text: 'Please fill out all required fields before proceeding.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK',
-                });
-            }
-        } else if (step === 2) {
-            const isValid = await trigger(["address", "city", "state", "zipcode", "country"]);
-            if (isValid) {
-                setStep(3);
-            } else {
-                Swal.fire({
-                    title: 'Missing Information',
-                    text: 'Please fill out all required address fields before proceeding.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK',
-                });
-            }
+      Swal.fire({
+        title: 'Order Confirmed',
+        text: 'Your order has been placed successfully!',
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#aaa',
+        confirmButtonText: 'View Orders',
+        cancelButtonText: 'Return Home'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate('/orders');
+        } else {
+          window.location.href = 'http://localhost:5173';
         }
-    };
+      });
+    } catch (error) {
+      console.error('Order submission error:', error);
+      Swal.fire({
+        title: 'Order Failed',
+        text: 'Something went wrong. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Okay',
+      });
+    }
+  };
 
-    // Function to get the correct image for each book
-    const getBookImage = (name) => {
-        return getImgUrl(name);  // This dynamically gets the image URL based on the name of the book
-    };
+  if (isLoading) return <div className="text-center py-8">Processing your order...</div>;
 
-    // Watch for changes in the form fields to determine if they are valid
-    const isPersonalInfoValid = !errors.name && !errors.phone;
-    const isAddressValid = !errors.address && !errors.city && !errors.state && !errors.zipcode && !errors.country;
+  // Step indicator data
+  const steps = [
+    { number: 1, title: "Personal Info" },
+    { number: 2, title: "Address" },
+    { number: 3, title: "Payment" },
+    { number: 4, title: "Review" },
+  ];
 
-    const handleBackStep = () => {
-        setStep(step - 1);
-    };
+  // Clickable step indicator handler
+  const handleStepClick = async (targetStep) => {
+    // Always allow going back
+    if (targetStep < step) {
+      setStep(targetStep);
+      return;
+    }
+    // For going forward, validate the previous step's fields:
+    if (targetStep === 2) {
+      const valid = await trigger(["name", "phone"]);
+      if (valid) setStep(2);
+      else
+        Swal.fire({
+          title: 'Incomplete',
+          text: 'Please fill in all required Personal Info fields first.',
+          icon: 'warning',
+        });
+    } else if (targetStep === 3) {
+      // Validate step 2
+      if (selectedAddressOption === 'new') {
+        const valid = await trigger(["address", "city", "state", "zipcode", "country"]);
+        if (valid) setStep(3);
+        else
+          Swal.fire({
+            title: 'Incomplete',
+            text: 'Please fill in all required Address fields first.',
+            icon: 'warning',
+          });
+      } else {
+        setStep(3);
+      }
+    } else if (targetStep === 4) {
+      // Validate step 3
+      if (selectedPaymentOption === 'new') {
+        const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
+        if (valid) setStep(4);
+        else
+          Swal.fire({
+            title: 'Incomplete',
+            text: 'Please fill in all required Payment fields first.',
+            icon: 'warning',
+          });
+      } else {
+        setStep(4);
+      }
+    }
+  };
 
-    return (
-        <section className="bg-[rgba(240,240,240,0.1)] min-h-screen p-6">
-            <div className="container max-w-2xl mx-auto">
-                <div className="bg-white p-8 rounded-lg shadow-xl">
-                    <div className="flex justify-between mb-8">
-                        <div
-                            className={`flex items-center ${step === 1 ? 'font-semibold text-blue-600' : ''}`}
-                            onClick={() => setStep(1)}
-                        >
-                            <span className={`text-xl cursor-pointer ${isPersonalInfoValid || step === 1 ? 'text-blue-600' : 'text-gray-400'}`}>1. Personal Info</span>
-                        </div>
-                        <div
-                            className={`flex items-center ${step === 2 ? 'font-semibold text-blue-600' : ''}`}
-                            onClick={() => (isPersonalInfoValid && step !== 1) && setStep(2)}
-                        >
-                            <span className={`text-xl cursor-pointer ${isPersonalInfoValid || step === 2 ? 'text-blue-600' : 'text-gray-400'}`}>2. Address</span>
-                        </div>
-                        <div
-                            className={`flex items-center ${step === 3 ? 'font-semibold text-blue-600' : ''}`}
-                            onClick={() => (isAddressValid && step !== 2) && setStep(3)}
-                        >
-                            <span className={`text-xl cursor-pointer ${isAddressValid || step === 3 ? 'text-blue-600' : 'text-gray-400'}`}>3. Review</span>
-                        </div>
-                    </div>
+  const handleNextStep = async () => {
+    if (step === 1) {
+      const valid = await trigger(["name", "phone"]);
+      if (valid) setStep(2);
+      else
+        Swal.fire({
+          title: 'Incomplete',
+          text: 'Fill in all required Personal Info fields.',
+          icon: 'warning',
+        });
+    } else if (step === 2) {
+      if (selectedAddressOption === 'new') {
+        const valid = await trigger(["address", "city", "state", "zipcode", "country"]);
+        if (valid) setStep(3);
+        else
+          Swal.fire({
+            title: 'Incomplete',
+            text: 'Fill in all required Address fields.',
+            icon: 'warning',
+          });
+      } else {
+        setStep(3);
+      }
+    } else if (step === 3) {
+      if (selectedPaymentOption === 'new') {
+        const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
+        if (valid) setStep(4);
+        else
+          Swal.fire({
+            title: 'Incomplete',
+            text: 'Fill in all required Payment fields.',
+            icon: 'warning',
+          });
+      } else {
+        setStep(4);
+      }
+    }
+  };
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                        {step === 1 && (
-                            <div>
-                                <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-gray-700">Full Name</label>
-                                        <input
-                                            {...register("name", { required: "Full name is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            type="text"
-                                            placeholder="John Doe"
-                                        />
-                                        {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-700">Email Address</label>
-                                        <input
-                                            {...register("email", { required: "Email is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            defaultValue={currentUser?.email}  // Allow the user to edit the email
-                                        />
-                                        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-700">Phone Number</label>
-                                        <input
-                                            {...register("phone", { required: "Phone number is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            type="text"
-                                            placeholder="+123 456 7890"
-                                        />
-                                        {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+  const handleBackStep = () => setStep(step - 1);
+  const getBookImage = (name) => getImgUrl(name);
 
-                        {step === 2 && (
-                            <div>
-                                <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-gray-700">Street Address</label>
-                                        <input
-                                            {...register("address", { required: "Address is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            type="text"
-                                            placeholder="1234 Main St"
-                                        />
-                                        {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-gray-700">City</label>
-                                            <input
-                                                {...register("city", { required: "City is required" })}
-                                                className="w-full border rounded-md p-3 mt-2"
-                                                type="text"
-                                                placeholder="City"
-                                            />
-                                            {errors.city && <p className="text-red-500 text-sm">{errors.city.message}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-gray-700">State</label>
-                                            <input
-                                                {...register("state", { required: "State is required" })}
-                                                className="w-full border rounded-md p-3 mt-2"
-                                                type="text"
-                                                placeholder="State"
-                                            />
-                                            {errors.state && <p className="text-red-500 text-sm">{errors.state.message}</p>}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-700">Zipcode</label>
-                                        <input
-                                            {...register("zipcode", { required: "Zipcode is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            type="text"
-                                            placeholder="Zipcode"
-                                        />
-                                        {errors.zipcode && <p className="text-red-500 text-sm">{errors.zipcode.message}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-700">Country</label>
-                                        <input
-                                            {...register("country", { required: "Country is required" })}
-                                            className="w-full border rounded-md p-3 mt-2"
-                                            type="text"
-                                            placeholder="Country"
-                                        />
-                                        {errors.country && <p className="text-red-500 text-sm">{errors.country.message}</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 3 && (
-                            <div>
-                                <h2 className="text-xl font-semibold mb-4">Review & Confirm</h2>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Order Summary</h3>
-                                    <div className="mt-4 space-y-2">
-                                        {cartItems.map((item, index) => (
-                                            <div key={item._id} className="flex justify-between items-center">
-                                                <div className="flex items-center space-x-4">
-                                                    <img
-                                                        src={getBookImage(item.coverImage)}
-                                                        alt={item.title}
-                                                        className="w-16 h-20 object-cover"
-                                                    />
-                                                    <span>{item.title}</span>
-                                                    <span className="text-gray-600">x{item.quantity}</span>
-                                                </div>
-                                                <span>${(item.newPrice * item.quantity).toFixed(2)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-between mt-4">
-                                        <span className="font-semibold text-lg">Total:</span>
-                                        <span className="text-lg">${totalPrice}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex justify-between mt-6">
-                            {step > 1 && (
-                                <button
-                                    type="button"
-                                    className="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500"
-                                    onClick={handleBackStep}
-                                >
-                                    Back
-                                </button>
-                            )}
-                            {step === 1 && (
-                                <button
-                                    type="button"
-                                    className="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900 ml-auto"
-                                    onClick={handleNextStep}
-                                >
-                                    Next
-                                </button>
-                            )}
-                            {step !== 1 && (
-                                <button
-                                    type="button"
-                                    className="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900"
-                                    onClick={step === 3 ? handleSubmit(onSubmit) : handleNextStep}
-                                >
-                                    {step === 3 ? 'Confirm Order' : 'Next'}
-                                </button>
-                            )}
-                        </div>
-                    </form>
+  return (
+    <section className="bg-gray-50 min-h-screen py-8">
+      {/* Container width set to max-w-2xl */}
+      <div className="max-w-2xl mx-auto px-4">
+        {/* Step Indicator */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            {steps.map(({ number, title }) => (
+              <div
+                key={number}
+                className="flex-1 flex flex-col items-center cursor-pointer"
+                onClick={() => handleStepClick(number)}
+              >
+                <div
+                  className={`w-10 h-10 flex items-center justify-center rounded-full border-2 ${
+                    step >= number ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'
+                  }`}
+                >
+                  {number}
                 </div>
+                <span className="mt-2 text-sm font-medium">{title}</span>
+              </div>
+            ))}
+          </div>
+          <div className="h-1 bg-gray-300 mt-4 relative">
+            <div
+              className="h-1 bg-blue-600 absolute top-0 left-0 transition-all duration-300"
+              style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-white shadow-md rounded-lg p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* Step 1: Personal Info */}
+            {step === 1 && (
+              <div>
+                <h2 className="text-2xl font-semibold mb-4">Personal Information</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-medium text-gray-700">Full Name</label>
+                    <input
+                      {...register("name", { required: "Full name is required" })}
+                      type="text"
+                      placeholder="John Doe"
+                      className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                    />
+                    {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block font-medium text-gray-700">Email Address</label>
+                    <input
+                      {...register("email", { required: "Email is required" })}
+                      type="email"
+                      defaultValue={currentUser?.email}
+                      className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                    />
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block font-medium text-gray-700">Phone Number</label>
+                    <input
+                      {...register("phone", { required: "Phone number is required" })}
+                      type="text"
+                      placeholder="+123 456 7890"
+                      className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                    />
+                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Address */}
+            {step === 2 && (
+              <div>
+                <h2 className="text-2xl font-semibold mb-4">Delivery Address</h2>
+                {savedAddresses.length > 0 && (
+                  <div className="mb-6">
+                    <p className="font-semibold mb-3">Select one of your saved addresses:</p>
+                    {savedAddresses.map(address => (
+                      <div key={address._id} 
+                           onClick={() => {
+                             setSelectedAddressOption('saved');
+                             setSelectedSavedAddress(address);
+                           }}
+                           className={`flex items-center mb-4 p-4 border rounded-lg cursor-pointer transition duration-200 ${
+                             selectedSavedAddress?._id === address._id ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                           }`}
+                      >
+                        <input
+                          type="radio"
+                          name="addressOption"
+                          value={address._id}
+                          checked={selectedAddressOption === 'saved' && selectedSavedAddress?._id === address._id}
+                          onChange={() => {
+                            setSelectedAddressOption('saved');
+                            setSelectedSavedAddress(address);
+                          }}
+                          className="mr-4"
+                        />
+                        <div>
+                          <p className="font-bold text-gray-800">{address.title}</p>
+                          <p className="text-gray-600 text-sm">{address.street}</p>
+                          <p className="text-gray-600 text-sm">
+                            {address.city}, {address.postalCode}, {address.country}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div
+                      onClick={() => setSelectedAddressOption('new')}
+                      className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition duration-200"
+                    >
+                      <input
+                        type="radio"
+                        name="addressOption"
+                        value="new"
+                        checked={selectedAddressOption === 'new'}
+                        onChange={() => setSelectedAddressOption('new')}
+                        className="mr-4"
+                      />
+                      <span className="font-bold text-gray-800">Enter a new address</span>
+                    </div>
+                  </div>
+                )}
+
+                {(savedAddresses.length === 0 || selectedAddressOption === 'new') && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block font-medium text-gray-700">Street Address</label>
+                      <input
+                        {...register("address", { required: "Address is required" })}
+                        type="text"
+                        placeholder="1234 Main St"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-medium text-gray-700">City</label>
+                        <input
+                          {...register("city", { required: "City is required" })}
+                          type="text"
+                          placeholder="City"
+                          className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                        {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block font-medium text-gray-700">State</label>
+                        <input
+                          {...register("state", { required: "State is required" })}
+                          type="text"
+                          placeholder="State"
+                          className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                        {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700">Zipcode</label>
+                      <input
+                        {...register("zipcode", { required: "Zipcode is required" })}
+                        type="text"
+                        placeholder="Zipcode"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.zipcode && <p className="text-red-500 text-sm mt-1">{errors.zipcode.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700">Country</label>
+                      <input
+                        {...register("country", { required: "Country is required" })}
+                        type="text"
+                        placeholder="Country"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === 3 && (
+              <div>
+                <h2 className="text-2xl font-semibold mb-4">Payment Information</h2>
+                {savedPayments.length > 0 && (
+                  <div className="mb-6">
+                    <p className="font-semibold mb-3">Select one of your saved payment methods:</p>
+                    {savedPayments.map(payment => (
+                      <div key={payment._id}
+                           onClick={() => {
+                             setSelectedPaymentOption('saved');
+                             setSelectedSavedPayment(payment);
+                           }}
+                           className={`flex items-center mb-4 p-4 border rounded-lg cursor-pointer transition duration-200 ${
+                             selectedSavedPayment?._id === payment._id ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                           }`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentOption"
+                          value={payment._id}
+                          checked={selectedPaymentOption === 'saved' && selectedSavedPayment?._id === payment._id}
+                          onChange={() => {
+                            setSelectedPaymentOption('saved');
+                            setSelectedSavedPayment(payment);
+                          }}
+                          className="mr-4"
+                        />
+                        <div>
+                          <p className="font-bold text-gray-800">{payment.cardHolder}</p>
+                          <p className="text-gray-600 text-sm">**** **** **** {payment.cardNumber.slice(-4)}</p>
+                          <p className="text-gray-600 text-sm">Exp: {payment.expiryDate}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div
+                      onClick={() => setSelectedPaymentOption('new')}
+                      className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition duration-200"
+                    >
+                      <input
+                        type="radio"
+                        name="paymentOption"
+                        value="new"
+                        checked={selectedPaymentOption === 'new'}
+                        onChange={() => setSelectedPaymentOption('new')}
+                        className="mr-4"
+                      />
+                      <span className="font-bold text-gray-800">Enter a new payment method</span>
+                    </div>
+                  </div>
+                )}
+                {selectedPaymentOption === 'new' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block font-medium text-gray-700">Card Number</label>
+                      <input
+                        {...register("cardNumber", { required: "Card number is required" })}
+                        type="text"
+                        placeholder="1234 5678 9012 3456"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700">Expiry Date</label>
+                      <input
+                        {...register("expiryDate", { required: "Expiry date is required" })}
+                        type="text"
+                        placeholder="MM/YY"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700">CVV</label>
+                      <input
+                        {...register("cvv", { required: "CVV is required" })}
+                        type="text"
+                        placeholder="123"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700">Cardholder Name</label>
+                      <input
+                        {...register("cardHolder", { required: "Cardholder name is required" })}
+                        type="text"
+                        placeholder="John Doe"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.cardHolder && <p className="text-red-500 text-sm mt-1">{errors.cardHolder.message}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 4: Review & Confirm */}
+            {step === 4 && (
+              <div>
+                <h2 className="text-2xl font-semibold mb-4">Review & Confirm</h2>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold text-lg">Order Summary</h3>
+                    <div className="mt-4 space-y-2">
+                      {cartItems.map(item => (
+                        <div key={item._id} className="flex justify-between items-center border-b pb-2">
+                          <div className="flex items-center space-x-4">
+                            <img src={getBookImage(item.coverImage)} alt={item.title} className="w-16 h-20 object-cover rounded" />
+                            <div>
+                              <p className="font-medium">{item.title}</p>
+                              <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                            </div>
+                          </div>
+                          <span className="font-semibold">${(item.newPrice * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-4 border-t pt-3">
+                      <span className="font-semibold text-lg">Total:</span>
+                      <span className="text-lg font-bold">${totalPrice}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-lg">Delivery Address</h3>
+                    {selectedAddressOption === 'saved' && selectedSavedAddress ? (
+                      <p className="mt-2 text-gray-700">
+                        <span className="font-bold">{selectedSavedAddress.title}</span> - {selectedSavedAddress.street}, {selectedSavedAddress.city}
+                        {selectedSavedAddress.state ? `, ${selectedSavedAddress.state}` : ''}, {selectedSavedAddress.postalCode}, {selectedSavedAddress.country}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-gray-700">
+                        {watchedAddress[0] || 'Address'}, {watchedAddress[1] || 'City'}, {watchedAddress[2] || 'State'}, {watchedAddress[3] || 'Zipcode'}, {watchedAddress[4] || 'Country'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-lg">Payment Method</h3>
+                    {selectedPaymentOption === 'saved' && selectedSavedPayment ? (
+                      <p className="mt-2 text-gray-700">
+                        {selectedSavedPayment.cardHolder} — **** **** **** {selectedSavedPayment.cardNumber.slice(-4)} (Exp: {selectedSavedPayment.expiryDate})
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-gray-700">
+                        Cardholder: {watchedPayment[3] || 'N/A'}, Card: {watchedPayment[0] ? '**** **** **** ' + watchedPayment[0].slice(-4) : 'N/A'}, Exp: {watchedPayment[1] || 'N/A'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={handleBackStep}
+                  className="px-6 py-3 bg-gray-400 text-white rounded-md hover:bg-gray-500 transition-colors"
+                >
+                  Back
+                </button>
+              )}
+              {step < 4 && (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="ml-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Next
+                </button>
+              )}
+              {step === 4 && (
+                <button
+                  type="submit"
+                  className="ml-auto px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Confirm Order
+                </button>
+              )}
             </div>
-        </section>
-    );
+          </form>
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export default CheckoutPage;
