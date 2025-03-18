@@ -1,17 +1,14 @@
-// src/account/account.controller.js
 const Account = require('./account.model');
 
 const syncAccount = async (req, res) => {
   try {
     const { uid, firstName, lastName, email, phone } = req.body;
-
-    // Using findOneAndUpdate with upsert: true creates or updates the account
+    // Using findOneAndUpdate with upsert: true creates or updates the account based on the Firebase UID.
     const account = await Account.findOneAndUpdate(
       { uid },
       { firstName, lastName, email, phone },
       { new: true, upsert: true, runValidators: true }
     );
-
     res.status(200).json(account);
   } catch (error) {
     console.error("Error syncing account:", error);
@@ -21,16 +18,15 @@ const syncAccount = async (req, res) => {
 
 const updateAccount = async (req, res) => {
   try {
-    const { id } = req.params;
+    // Use uid from the URL parameter (Firebase UID)
+    const { uid } = req.params;
     const { firstName, lastName, email, phone } = req.body;
-    const updatedAccount = await Account.findByIdAndUpdate(
-      id,
+    // Using upsert: true so if no document is found, a new one is created.
+    const updatedAccount = await Account.findOneAndUpdate(
+      { uid },
       { firstName, lastName, email, phone },
-      { new: true, runValidators: true }
+      { new: true, upsert: true, runValidators: true }
     );
-    if (!updatedAccount) {
-      return res.status(404).json({ message: "Account not found" });
-    }
     res.status(200).json(updatedAccount);
   } catch (error) {
     console.error("Error updating account:", error);

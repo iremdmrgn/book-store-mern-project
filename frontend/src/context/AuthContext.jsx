@@ -13,9 +13,7 @@ import axios from "axios";
 
 const AuthContext = createContext();
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -23,38 +21,54 @@ export const AuthProvide = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // register a user
-  const registerUser = async (email, password, firstName, lastName) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    // Update displayName in Firebase
-    await updateProfile(user, {
-      displayName: `${firstName} ${lastName}`,
-    });
-    // Sync account to MongoDB
-    await axios.post("http://localhost:5000/api/account/sync", {
-      uid: user.uid,
-      firstName,
-      lastName,
-      email,
-      phone: user.phoneNumber || "",
-    });
-    return userCredential;
+  // refreshUser function to reload the Firebase user and update context state
+  const refreshUser = async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+      setCurrentUser(auth.currentUser);
+    }
   };
 
-  // login, signInWithGoogle, logout, etc.
+  // Register a new user, update their Firebase profile, and sync to MongoDB
+  const registerUser = async (email, password, firstName, lastName) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      // Update displayName in Firebase
+      await updateProfile(user, {
+        displayName: `${firstName} ${lastName}`,
+      });
+      // Sync account to MongoDB
+      await axios.post("http://localhost:5000/api/account/sync", {
+        uid: user.uid,
+        firstName,
+        lastName,
+        email,
+        phone: user.phoneNumber || "",
+      });
+      return userCredential;
+    } catch (error) {
+      console.error("Error registering user:", error);
+      throw error;
+    }
+  };
+
+  // Login using email and password
   const loginUser = async (email, password) => {
     return await signInWithEmailAndPassword(auth, email, password);
   };
 
+  // Sign in with Google
   const signInWithGoogle = async () => {
     return await signInWithPopup(auth, googleProvider);
   };
 
+  // Logout the user
   const logout = () => {
     return signOut(auth);
   };
 
+  // Listen to auth state changes and sync account data to MongoDB
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
@@ -86,6 +100,7 @@ export const AuthProvide = ({ children }) => {
     loginUser,
     signInWithGoogle,
     logout,
+    refreshUser, // expose refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

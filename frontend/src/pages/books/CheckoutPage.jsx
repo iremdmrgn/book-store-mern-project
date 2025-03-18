@@ -16,13 +16,7 @@ const CheckoutPage = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-    trigger,
-  } = useForm();
+  const { register, handleSubmit, watch, getValues, formState: { errors }, trigger } = useForm();
   // 4 steps: 1. Personal Info, 2. Address, 3. Payment, 4. Review
   const [step, setStep] = useState(1);
   const [createOrder, { isLoading }] = useCreateOrderMutation();
@@ -74,9 +68,10 @@ const CheckoutPage = () => {
   }, [currentUser]);
 
   // Watch new address and payment fields
-  const watchedAddress = watch(["address", "city", "state", "zipcode", "country"]);
+  const watchedAddress = watch(["addressTitle", "address", "city", "state", "zipcode", "country"]);
   const watchedPayment = watch(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
 
+  // onSubmit remains unchanged (it creates the order)
   const onSubmit = async (data) => {
     // Determine delivery address
     const deliveryAddress = selectedAddressOption === 'saved' && selectedSavedAddress
@@ -190,30 +185,94 @@ const CheckoutPage = () => {
           icon: 'warning',
         });
     } else if (targetStep === 3) {
-      // Validate step 2
+      // Validate step 2 (including addressTitle)
       if (selectedAddressOption === 'new') {
-        const valid = await trigger(["address", "city", "state", "zipcode", "country"]);
-        if (valid) setStep(3);
-        else
+        const valid = await trigger(["addressTitle", "address", "city", "state", "zipcode", "country"]);
+        if (valid) {
+          // Ask if user wants to save the new address for future orders
+          const result = await Swal.fire({
+            title: 'Save Address?',
+            text: 'Do you want to save this address for future orders?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save it',
+            cancelButtonText: 'No, continue without saving'
+          });
+          if (result.isConfirmed) {
+            const values = getValues();
+            const addressPayload = {
+              title: values.addressTitle,
+              street: values.address,
+              city: values.city,
+              state: values.state,
+              district: "",
+              neighborhood: "",
+              postalCode: values.zipcode,
+              country: values.country,
+            };
+            try {
+              await axios.post(`http://localhost:5000/api/address/${currentUser.uid.trim()}`, addressPayload);
+            } catch(error) {
+              console.error("Error saving address:", error);
+              Swal.fire({
+                title: 'Error',
+                text: 'Failed to save address. Please try again.',
+                icon: 'error',
+              });
+            }
+          }
+          setStep(3);
+        } else {
           Swal.fire({
             title: 'Incomplete',
             text: 'Please fill in all required Address fields first.',
             icon: 'warning',
           });
+        }
       } else {
         setStep(3);
       }
     } else if (targetStep === 4) {
-      // Validate step 3
+      // Validate step 3 (for new payment)
       if (selectedPaymentOption === 'new') {
         const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
-        if (valid) setStep(4);
-        else
+        if (valid) {
+          // Ask if user wants to save the new payment method for future use
+          const result = await Swal.fire({
+            title: 'Save Payment Method?',
+            text: 'Do you want to save this payment method for future use?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save it',
+            cancelButtonText: 'No, continue without saving'
+          });
+          if (result.isConfirmed) {
+            const values = getValues();
+            const paymentPayload = {
+              cardNumber: values.cardNumber,
+              expiryDate: values.expiryDate,
+              cvv: values.cvv,
+              cardHolder: values.cardHolder,
+            };
+            try {
+              await axios.post(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`, paymentPayload);
+            } catch (error) {
+              console.error("Error saving payment method:", error);
+              Swal.fire({
+                title: 'Error',
+                text: 'Failed to save payment method. Please try again.',
+                icon: 'error',
+              });
+            }
+          }
+          setStep(4);
+        } else {
           Swal.fire({
             title: 'Incomplete',
             text: 'Please fill in all required Payment fields first.',
             icon: 'warning',
           });
+        }
       } else {
         setStep(4);
       }
@@ -232,27 +291,91 @@ const CheckoutPage = () => {
         });
     } else if (step === 2) {
       if (selectedAddressOption === 'new') {
-        const valid = await trigger(["address", "city", "state", "zipcode", "country"]);
-        if (valid) setStep(3);
-        else
+        const valid = await trigger(["addressTitle", "address", "city", "state", "zipcode", "country"]);
+        if (valid) {
+          // Ask if user wants to save the new address for future orders
+          const result = await Swal.fire({
+            title: 'Save Address?',
+            text: 'Do you want to save this address for future orders?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save it',
+            cancelButtonText: 'No, continue without saving'
+          });
+          if (result.isConfirmed) {
+            const values = getValues();
+            const addressPayload = {
+              title: values.addressTitle,
+              street: values.address,
+              city: values.city,
+              state: values.state,
+              district: "",
+              neighborhood: "",
+              postalCode: values.zipcode,
+              country: values.country,
+            };
+            try {
+              await axios.post(`http://localhost:5000/api/address/${currentUser.uid.trim()}`, addressPayload);
+            } catch (error) {
+              console.error("Error saving address:", error);
+              Swal.fire({
+                title: 'Error',
+                text: 'Failed to save address. Please try again.',
+                icon: 'error',
+              });
+            }
+          }
+          setStep(3);
+        } else {
           Swal.fire({
             title: 'Incomplete',
             text: 'Fill in all required Address fields.',
             icon: 'warning',
           });
+        }
       } else {
         setStep(3);
       }
     } else if (step === 3) {
       if (selectedPaymentOption === 'new') {
         const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
-        if (valid) setStep(4);
-        else
+        if (valid) {
+          // Ask if user wants to save the new payment method for future use
+          const result = await Swal.fire({
+            title: 'Save Payment Method?',
+            text: 'Do you want to save this payment method for future use?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save it',
+            cancelButtonText: 'No, continue without saving'
+          });
+          if (result.isConfirmed) {
+            const values = getValues();
+            const paymentPayload = {
+              cardNumber: values.cardNumber,
+              expiryDate: values.expiryDate,
+              cvv: values.cvv,
+              cardHolder: values.cardHolder,
+            };
+            try {
+              await axios.post(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`, paymentPayload);
+            } catch (error) {
+              console.error("Error saving payment method:", error);
+              Swal.fire({
+                title: 'Error',
+                text: 'Failed to save payment method. Please try again.',
+                icon: 'error',
+              });
+            }
+          }
+          setStep(4);
+        } else {
           Swal.fire({
             title: 'Incomplete',
             text: 'Fill in all required Payment fields.',
             icon: 'warning',
           });
+        }
       } else {
         setStep(4);
       }
@@ -391,6 +514,17 @@ const CheckoutPage = () => {
 
                 {(savedAddresses.length === 0 || selectedAddressOption === 'new') && (
                   <div className="space-y-4">
+                    {/* New Address: Title input added */}
+                    <div className="flex flex-col">
+                      <label className="block font-medium text-gray-700">Address Title</label>
+                      <input
+                        {...register("addressTitle", { required: "Address title is required" })}
+                        type="text"
+                        placeholder="e.g., Home, Office"
+                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                      />
+                      {errors.addressTitle && <p className="text-red-500 text-sm mt-1">{errors.addressTitle.message}</p>}
+                    </div>
                     <div>
                       <label className="block font-medium text-gray-700">Street Address</label>
                       <input
@@ -582,7 +716,7 @@ const CheckoutPage = () => {
                       </p>
                     ) : (
                       <p className="mt-2 text-gray-700">
-                        {watchedAddress[0] || 'Address'}, {watchedAddress[1] || 'City'}, {watchedAddress[2] || 'State'}, {watchedAddress[3] || 'Zipcode'}, {watchedAddress[4] || 'Country'}
+                        {watchedAddress[1] || 'Address'}, {watchedAddress[2] || 'City'}, {watchedAddress[3] || 'State'}, {watchedAddress[4] || 'Zipcode'}, {watchedAddress[5] || 'Country'}
                       </p>
                     )}
                   </div>
