@@ -74,7 +74,7 @@ const FavoritesPage = () => {
 
               <div 
                 className="flex flex-col items-center gap-3 p-3 border rounded-md" 
-                style={{ backgroundColor: 'rgba(150,150,170,0.3)' }}
+                style={{ backgroundColor: 'rgba(164, 164, 180, 0.3)' }}
               >
                 {/* Book Image */}
                 <div className="h-32 w-32 border rounded-md overflow-hidden">
@@ -109,7 +109,8 @@ const FavoritesPage = () => {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl shadow-lg bg-gray-50">
+        // Empty state container with a max-width for 2 product cards (adjusted to 600px)
+        <div className="mx-auto w-full max-w-[600px] flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl shadow-lg bg-gray-50">
           <FiHeart className="text-6xl text-red-500 mb-4" />
           <p className="text-center text-gray-600 text-lg font-medium">
             There are no products in your favorites list. <br />

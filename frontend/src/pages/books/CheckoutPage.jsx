@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -438,8 +438,8 @@ const CheckoutPage = () => {
   return (
     <section style={{ backgroundColor: 'rgb(250,248,230)' }} className="min-h-screen py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* Combined White Container */}
-        <div className="bg-white shadow-md rounded-lg p-8">
+        {/* Combined White Container with reduced width/height and oval edges */}
+        <div className="bg-white shadow-md rounded-2xl p-4">
           {/* Step Indicator */}
           <div className="mb-8">
             <div className="flex justify-between items-center">
@@ -473,7 +473,9 @@ const CheckoutPage = () => {
             {/* Step 1: Personal Info */}
             {step === 1 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4">Personal Information</h2>
+                <h2 className="text-2xl font-semibold mb-4" style={{ fontFamily: 'Lobster, cursive' }}>
+                  Personal Information
+                </h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block font-medium text-gray-700">Full Name</label>
@@ -514,7 +516,9 @@ const CheckoutPage = () => {
             {/* Step 2: Address */}
             {step === 2 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4">Delivery Address</h2>
+                <h2 className="text-2xl font-semibold mb-4" style={{ fontFamily: 'Lobster, cursive' }}>
+                  Delivery Address
+                </h2>
                 {savedAddresses.length > 0 && (
                   <div className="mb-6">
                     <p className="font-semibold mb-3">Select one of your saved addresses:</p>
@@ -637,7 +641,9 @@ const CheckoutPage = () => {
             {/* Step 3: Payment */}
             {step === 3 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4">Payment Information</h2>
+                <h2 className="text-2xl font-semibold mb-4" style={{ fontFamily: 'Lobster, cursive' }}>
+                  Payment Information
+                </h2>
                 {savedPayments.length > 0 && (
                   <div className="mb-6">
                     <p className="font-semibold mb-3">Select one of your saved payment methods:</p>
@@ -735,7 +741,9 @@ const CheckoutPage = () => {
             {/* Step 4: Review & Confirm */}
             {step === 4 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4">Review & Confirm</h2>
+                <h2 className="text-2xl font-semibold mb-4" style={{ fontFamily: 'Lobster, cursive' }}>
+                  Review & Confirm
+                </h2>
                 <div className="space-y-6">
                   <div>
                     <h3 className="font-semibold text-lg">Order Summary</h3>

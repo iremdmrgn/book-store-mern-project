@@ -1,44 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { getImgUrl } from '../../utils/getImgUrl';
-import { LuTrash2 } from 'react-icons/lu';
-
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
+import { getImgUrl } from '../../utils/getImgUrl'
+import { LuTrash2 } from 'react-icons/lu'
 import { 
   fetchCart,
   removeFromCartAsync,
   updateCartItemAsync,
   clearCartAsync
-} from '../../redux/features/cart/cartSlice';
-import { ShoppingCartIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../context/AuthContext'; // Oturum açan kullanıcıyı almak için
+} from '../../redux/features/cart/cartSlice'
+import { ShoppingCartIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '../../context/AuthContext' // Oturum açan kullanıcıyı almak için
 
 const CartPage = () => {
-  const { currentUser } = useAuth();
-  const dispatch = useDispatch();
-  const { cartItems, loading, error } = useSelector(state => state.cart);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
+  const { currentUser } = useAuth()
+  const dispatch = useDispatch()
+  const { cartItems, loading, error } = useSelector(state => state.cart)
+  const [showAlert, setShowAlert] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('')
 
-  const MAX_QUANTITY = 10;
-  const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2);
+  const MAX_QUANTITY = 10
+  const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2)
 
   // Load cart data from backend using trimmed Firebase uid
   useEffect(() => {
     if (currentUser && currentUser.uid) {
-      dispatch(fetchCart(currentUser.uid.trim()));
+      dispatch(fetchCart(currentUser.uid.trim()))
     }
-  }, [currentUser, dispatch]);
+  }, [currentUser, dispatch])
 
   // Remove item from cart asynchronously
   const handleRemoveFromCart = (product) => {
-    dispatch(removeFromCartAsync({ userId: currentUser.uid.trim(), itemId: product._id }));
-  };
+    dispatch(removeFromCartAsync({ userId: currentUser.uid.trim(), itemId: product._id }))
+  }
 
   // Clear cart asynchronously
   const handleClearCart = () => {
-    dispatch(clearCartAsync(currentUser.uid.trim()));
-  };
+    dispatch(clearCartAsync(currentUser.uid.trim()))
+  }
 
   // Increase quantity
   const handleIncreaseQuantity = (product) => {
@@ -47,12 +46,12 @@ const CartPage = () => {
         userId: currentUser.uid.trim(), 
         itemId: product._id, 
         quantity: product.quantity + 1 
-      }));
+      }))
     } else {
-      setAlertMessage(`You can only add up to ${MAX_QUANTITY} items of this product.`);
-      setShowAlert(true);
+      setAlertMessage(`You can only add up to ${MAX_QUANTITY} items of this product.`)
+      setShowAlert(true)
     }
-  };
+  }
 
   // Decrease quantity
   const handleDecreaseQuantity = (product) => {
@@ -61,16 +60,16 @@ const CartPage = () => {
         userId: currentUser.uid.trim(), 
         itemId: product._id, 
         quantity: product.quantity - 1 
-      }));
+      }))
     }
-  };
+  }
 
   const closeAlert = () => {
-    setShowAlert(false);
-  };
+    setShowAlert(false)
+  }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
   
   if (error) {
@@ -78,22 +77,18 @@ const CartPage = () => {
       <div className="text-center text-red-600">
         Error: {error.message ? error.message : JSON.stringify(error)}
       </div>
-    );
+    )
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Title outside the white block */}
-      <h1
-        style={{ fontFamily: 'Lobster, cursive' }}
-        className="text-4xl font-semibold text-center mb-8"
-      >
+      {/* Page Title */}
+      <h1 style={{ fontFamily: 'Lobster, cursive' }} className="text-4xl font-semibold text-center mb-8">
         Shopping Cart
       </h1>
       
-      {/* White Block for Cart Items & Subtotal */}
-      <div className="bg-white">
-        {/* Alert Message */}
+      {/* Cart Container */}
+      <div className="bg-white rounded-xl shadow-lg p-4">
         {showAlert && (
           <div className="fixed inset-0 flex justify-center items-center z-50 bg-gray-800 bg-opacity-50">
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
@@ -112,17 +107,14 @@ const CartPage = () => {
         <div className="pt-0 pb-3">
           <div className="flow-root">
             {cartItems.length > 0 ? (
-              <ul role="list" className="divide-y divide-gray-300">
+              <ul role="list" className="divide-y divide-gray-200">
                 {cartItems.map((product) => (
                   <li
                     key={product?._id}
-                    className="w-full flex py-5 mb-0 rounded-lg transition-all duration-200"
-                    style={{
-                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 -4px 6px -1px rgba(0,0,0,0.1)"
-                    }}
+                    className="relative flex py-5 mb-0 rounded-lg transition-shadow duration-200 hover:shadow-lg"
                   >
                     {/* Product Image */}
-                    <div className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-lg border border-gray-300 shadow-sm">
+                    <div className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
                       <img
                         alt="product"
                         src={`${getImgUrl(product?.coverImage)}`}
@@ -132,30 +124,17 @@ const CartPage = () => {
 
                     {/* Product Details */}
                     <div className="ml-5 flex flex-1 flex-col">
-                      <div className="relative w-full">
-                        {/* Remove Button with Trash Icon and "Delete" text */}
-                        <button
-                          onClick={() => handleRemoveFromCart(product)}
-                          type="button"
-                          className="absolute flex items-center space-x-1 transition-colors text-gray-600 hover:text-gray-800"
-                          style={{ top: '-8px', right: '0px' }}
-                        >
-                          <LuTrash2 size={20} />
-                          <span className="text-xs">Delete</span>
-                        </button>
-                        <div>
-                          <div className="flex flex-wrap justify-between text-sm font-semibold text-gray-900">
-                            <h2 className="truncate max-w-xs">
-                              <Link to="/" className="hover:text-indigo-700">{product?.title}</Link>
-                            </h2>
-                          </div>
-                        </div>
+                      <div className="mb-4">
+                        <h2 className="text-sm font-semibold text-gray-900 truncate">
+                          {/* Link to SingleBook page */}
+                          <Link to={`/book/${product?.productId || product?._id.toString()}`} className="hover:text-indigo-700">
+                            {product?.title}
+                          </Link>
+                        </h2>
                       </div>
-
-                      {/* Quantity and Price */}
-                      <div className="flex items-center justify-between mt-4 text-sm">
-                        {/* Quantity Control */}
-                        <div className="flex items-center space-x-2">
+                      <div className="flex items-center">
+                        {/* Quantity Control with fixed width */}
+                        <div className="flex items-center space-x-2 w-48">
                           <button
                             onClick={() => handleDecreaseQuantity(product)}
                             className="px-3 py-1 bg-yellow-500 text-black rounded-full hover:bg-yellow-600 transition-colors"
@@ -170,34 +149,52 @@ const CartPage = () => {
                             +
                           </button>
                         </div>
-                        {/* Adjusted Price */}
-                        <p className="text-lg font-semibold text-gray-800">
+                        {/* Price aligned naturally after the fixed-width quantity controls */}
+                        <p className="text-lg font-semibold text-gray-800 ml-60">
                           ${(product.newPrice * product.quantity).toFixed(2)}
                         </p>
                       </div>
                     </div>
+                    {/* Remove Button */}
+                    <button
+                      onClick={() => handleRemoveFromCart(product)}
+                      type="button"
+                      className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    >
+                      <LuTrash2 size={20} />
+                    </button>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="text-center text-gray-500 text-sm flex items-center justify-center">
-                <ShoppingCartIcon className="h-8 w-8 mr-2" />
-                <span className="text-lg">Your cart is empty!</span>
+              <div className="flex items-center justify-center h-48">
+                <div className="flex flex-col items-center gap-1">
+                  <ShoppingCartIcon className="h-10 w-10 text-gray-500" />
+                  <span className="text-xl mt-2 font-semibold">Your cart is empty!</span>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Looks like you haven't added any items to your cart yet.
+                  </p>
+                  <Link
+                    to="/"
+                    className="mt-4 px-6 py-2 bg-yellow-500 text-black font-semibold rounded-full hover:bg-yellow-600 transition-colors"
+                  >
+                    Start Shopping
+                  </Link>
+                </div>
               </div>
             )}
           </div>
         </div>
 
         {/* Cart Summary */}
-        <div className="mt-36 border-t border-gray-300 py-4 w-full rounded-b-xl" style={{ backgroundColor: 'rgba(150,150,170,0.2)' }}>
-          <div className="flex justify-between text-lg font-semibold mb-5 w-full px-5">
+        <div className="mt-8 border-t border-gray-300 py-4 rounded-b-xl" style={{ backgroundColor: 'rgba(165, 165, 179, 0.2)' }}>
+          <div className="flex justify-between text-lg font-semibold mb-5 px-5">
             <p>Subtotal</p>
             <p>${totalPrice ? totalPrice : 0}</p>
           </div>
           <p className="mt-1 text-xs text-gray-600 mb-3 px-5">
             Shipping and taxes calculated at checkout.
           </p>
-          {/* Checkout Button */}
           <div className="mt-6 px-5">
             <Link
               to={cartItems.length > 0 ? "/checkout" : "#"}
@@ -206,8 +203,7 @@ const CartPage = () => {
               Proceed to Checkout
             </Link>
           </div>
-          {/* Continue Shopping Button */}
-          <div className="mt-5 flex justify-center text-center text-xs text-gray-600">
+          <div className="mt-5 flex justify-center text-center text-xs text-gray-900">
             <Link to="/">
               <button type="button" className="font-medium">
                 Continue Shopping <span aria-hidden="true"> &rarr;</span>
@@ -217,7 +213,7 @@ const CartPage = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 export default CartPage;
