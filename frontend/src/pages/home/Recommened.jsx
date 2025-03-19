@@ -28,7 +28,7 @@ const Recommened = () => {
           className="bg-[#F9A825] p-2 rounded-full shadow-md hover:bg-[#F9A825]"
           onClick={() => swiperRef.current?.slidePrev()} // Swiper'ı sola kaydır
         >
-          <FiChevronLeft size={24} className="text-white" />
+          <FiChevronLeft size={20} className="text-white" />
         </button>
       </div>
 

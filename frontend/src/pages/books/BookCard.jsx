@@ -68,7 +68,7 @@ const BookCard = ({ book }) => {
 
         <div className="text-center w-full">
           <div onClick={handleBookClick}>
-            <h3 className="text-sm font-semibold hover:text-blue-600 mb-2 truncate">
+            <h3 className="text-sm font-semibold  mb-2 truncate">
               {book?.title || 'No title available'}
             </h3>
           </div>

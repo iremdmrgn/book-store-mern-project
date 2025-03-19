@@ -1,18 +1,36 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useGetOrderByEmailQuery } from "../../redux/features/orders/ordersApi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getImgUrl } from "../../utils/getImgUrl";
 import axios from "axios";
 import { FaEdit } from "react-icons/fa";
 import { PiShippingContainer } from "react-icons/pi";
 import ReactDOMServer from "react-dom/server";
+// Import Firebase methods for updating profile, email, and reauthentication
+import { updateProfile, updateEmail, reauthenticateWithCredential, reauthenticateWithPopup, EmailAuthProvider, GoogleAuthProvider } from "firebase/auth";
 
 const Profile = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // URL'den sekme anahtarını okuyup state'e atıyoruz
   const [selectedTab, setSelectedTab] = useState("userInfo");
+
+  useEffect(() => {
+    // Örneğin, URL "/profile/orders" ise, pathParts[2] "orders" olacaktır
+    const pathParts = location.pathname.split("/");
+    const tab = pathParts[2] || "userInfo";
+    setSelectedTab(tab);
+  }, [location.pathname]);
+
+  // Sekme değiştirirken URL'yi de güncelleyen fonksiyon
+  const handleTabChange = (key) => {
+    navigate(`/profile/${key}`);
+  };
+
   const [addresses, setAddresses] = useState([]);
   const [payments, setPayments] = useState([]);
   const [favorites, setFavorites] = useState([]); // favorites state remains unchanged
@@ -60,10 +78,66 @@ const Profile = () => {
   const [editableEmail, setEditableEmail] = useState(currentUser?.email || "");
   const [editablePhone, setEditablePhone] = useState(currentUser?.phone || "");
 
-  // Function to update user information to backend
+  // New useEffect to update local editable states when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      const parts = currentUser.displayName ? currentUser.displayName.split(" ") : [];
+      setEditableFirstName(parts[0] || currentUser.email || "");
+      setEditableLastName(parts[1] || "");
+      setEditableEmail(currentUser.email || "");
+      setEditablePhone(currentUser.phone || "");
+    }
+  }, [currentUser]);
+
+  // NEW: Function to fetch updated account info from MongoDB
+  const fetchAccount = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
+      // Update local state with MongoDB account data
+      setEditableFirstName(response.data.firstName);
+      setEditableLastName(response.data.lastName);
+      setEditableEmail(response.data.email);
+      setEditablePhone(response.data.phone);
+      console.log("Fetched account data:", response.data);
+    } catch (error) {
+      console.error("Error fetching account data:", error);
+    }
+  };
+
+  // Call fetchAccount when currentUser changes (optional)
+  useEffect(() => {
+    if (currentUser) {
+      fetchAccount();
+    }
+  }, [currentUser]);
+
+  // Function to update user information to backend and Firebase with reauthentication
   const handleUpdateUser = async () => {
     try {
-      const response = await axios.put(
+      // Reauthenticate differently based on the provider
+      if (currentUser.providerData[0]?.providerId === "google.com") {
+        // For Google, use a popup reauthentication
+        await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
+      } else {
+        // For email/password, prompt for password reauthentication
+        const currentPassword = prompt("Please enter your current password to update your email:");
+        if (!currentPassword) {
+          throw new Error("Password is required for reauthentication");
+        }
+        const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+        await reauthenticateWithCredential(currentUser, credential);
+      }
+
+      // Update Firebase profile: update displayName
+      await updateProfile(currentUser, {
+        displayName: `${editableFirstName} ${editableLastName}`,
+      });
+      // If email changed, update it in Firebase as well
+      if (editableEmail !== currentUser.email) {
+        await updateEmail(currentUser, editableEmail);
+      }
+      // Update account info in MongoDB
+      await axios.put(
         `http://localhost:5000/api/account/${currentUser.uid.trim()}`,
         {
           firstName: editableFirstName,
@@ -72,6 +146,9 @@ const Profile = () => {
           phone: editablePhone,
         }
       );
+      // After successful update, refresh Firebase user info and fetch updated account data
+      await refreshUser();
+      await fetchAccount();
       Swal.fire({
         icon: "success",
         title: "Information Updated",
@@ -84,7 +161,7 @@ const Profile = () => {
       Swal.fire({
         icon: "error",
         title: "Update Failed",
-        text: "Please try again.",
+        text: err.message || "Please try again.",
       });
     }
   };
@@ -556,7 +633,7 @@ const Profile = () => {
             <button
               key={key}
               onClick={() => {
-                setSelectedTab(key);
+                handleTabChange(key);
                 // reset any edit states when switching tabs
                 cancelEditAddress();
                 cancelEditPayment();
@@ -1171,7 +1248,22 @@ const Profile = () => {
                           : {review.text}
                         </p>
                       </div>
-                      {currentUser && review.userId === currentUser.uid}
+                      {currentUser && review.userId === currentUser.uid && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await axios.delete(`http://localhost:5000/api/reviews/${review._id}`);
+                              setReviews(reviews.filter(r => r._id !== review._id));
+                            } catch (err) {
+                              console.error("Error deleting review:", err);
+                              alert("Failed to delete review. Please try again.");
+                            }
+                          }}
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                        >
+                          x
+                        </button>
+                      )}
                     </div>
                   ))
                 ) : (

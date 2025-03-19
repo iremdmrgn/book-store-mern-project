@@ -18,9 +18,14 @@ const SingleBook = () => {
 
   const [rating, setRating] = useState(0)
   const [reviewText, setReviewText] = useState('')
-  const [reviews, setReviews] = useState([]) // Reviews state
+  const [reviews, setReviews] = useState([])
   const [reviewSubmitted, setReviewSubmitted] = useState(false)
   const [activeTab, setActiveTab] = useState('description')
+
+  // Compare IDs as strings to detect if book is already a favorite
+  const isFavorite = favorites.some(
+    (fav) => (fav.productId || fav._id).toString() === book?._id.toString()
+  )
 
   // Function to submit a review
   const handleReviewSubmit = async (e) => {
@@ -38,7 +43,6 @@ const SingleBook = () => {
     }
     try {
       const response = await axios.post('http://localhost:5000/api/reviews', newReview)
-      // Prepend the new review to the current reviews
       setReviews([response.data, ...reviews])
       setReviewSubmitted(true)
       setRating(0)
@@ -77,19 +81,22 @@ const SingleBook = () => {
     dispatch(addToCartAsync({ userId: currentUser.uid, item: productData }))
   }
 
-  // Favorite toggle function
-  const handleFavoriteToggle = (book) => {
-    const isFav = favorites.some(fav => fav.productId === book._id)
-    if (isFav) {
-      dispatch(removeFavoriteAsync({ userId: currentUser.uid, itemId: book._id }))
-    } else {
-      const favoriteData = {
-        productId: book._id,
-        title: book.title,
-        coverImage: book.coverImage,
-        newPrice: book.newPrice,
+  // Favorite toggle function with duplicate check using string comparison
+  const handleFavoriteToggle = () => {
+    if (currentUser && currentUser.uid) {
+      if (isFavorite) {
+        dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: book._id.toString() }))
+      } else {
+        const favoriteData = {
+          productId: book._id.toString(),
+          title: book.title,
+          coverImage: book.coverImage,
+          newPrice: book.newPrice,
+        }
+        dispatch(addFavoriteAsync({ userId: currentUser.uid.trim(), item: favoriteData }))
       }
-      dispatch(addFavoriteAsync({ userId: currentUser.uid, item: favoriteData }))
+    } else {
+      alert('Please log in to manage favorites.')
     }
   }
 
@@ -118,12 +125,14 @@ const SingleBook = () => {
           </div>
           <div className="flex flex-col gap-4 justify-start">
             <button
-              onClick={() => handleFavoriteToggle(book)}
+              onClick={handleFavoriteToggle}
               className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-200 focus:outline-none transition-all duration-300"
             >
-              {favorites.some(fav => fav.productId === book._id) 
-                ? <HiHeart className="text-red-600" /> 
-                : <HiOutlineHeart className="text-gray-500" />}
+              {isFavorite ? (
+                <HiHeart className="text-red-600" />
+              ) : (
+                <HiOutlineHeart className="text-gray-500" />
+              )}
             </button>
             <button
               onClick={() => alert("Sharing feature coming soon!")}
@@ -136,7 +145,7 @@ const SingleBook = () => {
 
         <div className="space-y-4">
           {/* Book Title */}
-          <h1 className="text-4xl font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-300">{book.title}</h1>
+          <h1 className="text-4xl font-semibold text-gray-900 ">{book.title}</h1>
 
           {/* Book Details */}
           <div className="text-sm text-gray-600 space-y-2">
@@ -210,7 +219,6 @@ const SingleBook = () => {
         {activeTab === 'reviews' && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold text-gray-800">Reviews</h2>
-            {/* Review Form */}
             <form onSubmit={handleReviewSubmit} className="space-y-6 mt-4">
               <div>
                 <label htmlFor="rating" className="text-xl font-semibold text-gray-700">Rating</label>
@@ -248,7 +256,6 @@ const SingleBook = () => {
               </button>
             </form>
 
-            {/* Display Reviews with Delete Button */}
             <div className="mt-8 space-y-4">
               {reviews.length > 0 ? (
                 reviews.map((review, index) => (
@@ -259,22 +266,24 @@ const SingleBook = () => {
                       ))}
                     </div>
                     <p className="mt-2 text-gray-700"><strong>{review.reviewer}:</strong> {review.text}</p>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await axios.delete(`http://localhost:5000/api/reviews/${review._id}`)
-                          setReviews(reviews.filter(r => r._id !== review._id))
-                        } catch (err) {
-                          console.error("Error deleting review:", err)
-                          alert("Failed to delete review. Please try again.")
-                        }
-                      }}
-                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                    >
-                      x
-                    </button>
+                    {currentUser && review.userId === currentUser.uid && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await axios.delete(`http://localhost:5000/api/reviews/${review._id}`)
+                            setReviews(reviews.filter(r => r._id !== review._id))
+                          } catch (err) {
+                            console.error("Error deleting review:", err)
+                            alert("Failed to delete review. Please try again.")
+                          }
+                        }}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                      >
+                        x
+                      </button>
+                    )}
                   </div>
-              ))
+                ))
               ) : (
                 <p className="text-gray-500">No reviews yet. Be the first to review this book!</p>
               )}
@@ -286,4 +295,4 @@ const SingleBook = () => {
   )
 }
 
-export default SingleBook
+export default SingleBook;

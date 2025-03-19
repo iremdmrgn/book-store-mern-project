@@ -81,8 +81,8 @@ const Navbar = () => {
             <span className="text-xl font-serif font-semibold text-black">Leaf & Chapter</span>
           </Link>
 
-          {/* Search Bar */}
-          <div className="relative w-80 mt-12">
+          {/* Search Bar with increased width */}
+          <div className="relative w-96 mt-12">
             <IoSearchOutline className="absolute left-3 inset-y-2" />
             <input
               type="text"

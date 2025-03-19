@@ -16,7 +16,16 @@ const CheckoutPage = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const { register, handleSubmit, watch, getValues, formState: { errors }, trigger } = useForm();
+  const {
+    register,
+    handleSubmit,
+    watch,
+    getValues,
+    setValue,  // <-- Added setValue from useForm
+    formState: { errors },
+    trigger,
+  } = useForm();
+
   // 4 steps: 1. Personal Info, 2. Address, 3. Payment, 4. Review
   const [step, setStep] = useState(1);
   const [createOrder, { isLoading }] = useCreateOrderMutation();
@@ -70,6 +79,53 @@ const CheckoutPage = () => {
   // Watch new address and payment fields
   const watchedAddress = watch(["addressTitle", "address", "city", "state", "zipcode", "country"]);
   const watchedPayment = watch(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
+
+  // ---- Personal Information: Pre-fill using Firebase & MongoDB account data ----
+  // We'll create local state for the editable fields.
+  const [editableFirstName, setEditableFirstName] = useState("");
+  const [editableLastName, setEditableLastName] = useState("");
+  const [editableEmail, setEditableEmail] = useState("");
+  const [editablePhone, setEditablePhone] = useState("");
+
+  // When currentUser loads, update name and email from Firebase
+  useEffect(() => {
+    if (currentUser) {
+      const parts = currentUser.displayName ? currentUser.displayName.split(" ") : [];
+      setEditableFirstName(parts[0] || currentUser.email || "");
+      setEditableLastName(parts[1] || "");
+      setEditableEmail(currentUser.email || "");
+      // currentUser.phone might not be set (especially for Google sign-in)
+    }
+  }, [currentUser]);
+
+  // Function to fetch updated account info from MongoDB
+  const fetchAccount = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
+      // Update local state with MongoDB account data
+      setEditableFirstName(response.data.firstName);
+      setEditableLastName(response.data.lastName);
+      setEditableEmail(response.data.email);
+      setEditablePhone(response.data.phone);
+      console.log("Fetched account data:", response.data);
+    } catch (error) {
+      console.error("Error fetching account data:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchAccount();
+    }
+  }, [currentUser]);
+
+  // NEW: Update react-hook-form values when local editable fields change
+  useEffect(() => {
+    setValue("phone", editablePhone);
+    setValue("email", editableEmail);
+    // Optionally, update a "name" field if needed:
+    setValue("name", `${editableFirstName} ${editableLastName}`);
+  }, [editablePhone, editableEmail, editableFirstName, editableLastName, setValue]);
 
   // onSubmit remains unchanged (it creates the order)
   const onSubmit = async (data) => {
@@ -140,7 +196,7 @@ const CheckoutPage = () => {
         cancelButtonText: 'Return Home'
       }).then((result) => {
         if (result.isConfirmed) {
-          navigate('/orders');
+          navigate('/profile/orders');
         } else {
           window.location.href = 'http://localhost:5173';
         }
@@ -185,11 +241,9 @@ const CheckoutPage = () => {
           icon: 'warning',
         });
     } else if (targetStep === 3) {
-      // Validate step 2 (including addressTitle)
       if (selectedAddressOption === 'new') {
         const valid = await trigger(["addressTitle", "address", "city", "state", "zipcode", "country"]);
         if (valid) {
-          // Ask if user wants to save the new address for future orders
           const result = await Swal.fire({
             title: 'Save Address?',
             text: 'Do you want to save this address for future orders?',
@@ -233,11 +287,9 @@ const CheckoutPage = () => {
         setStep(3);
       }
     } else if (targetStep === 4) {
-      // Validate step 3 (for new payment)
       if (selectedPaymentOption === 'new') {
         const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
         if (valid) {
-          // Ask if user wants to save the new payment method for future use
           const result = await Swal.fire({
             title: 'Save Payment Method?',
             text: 'Do you want to save this payment method for future use?',
@@ -293,7 +345,6 @@ const CheckoutPage = () => {
       if (selectedAddressOption === 'new') {
         const valid = await trigger(["addressTitle", "address", "city", "state", "zipcode", "country"]);
         if (valid) {
-          // Ask if user wants to save the new address for future orders
           const result = await Swal.fire({
             title: 'Save Address?',
             text: 'Do you want to save this address for future orders?',
@@ -340,7 +391,6 @@ const CheckoutPage = () => {
       if (selectedPaymentOption === 'new') {
         const valid = await trigger(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
         if (valid) {
-          // Ask if user wants to save the new payment method for future use
           const result = await Swal.fire({
             title: 'Save Payment Method?',
             text: 'Do you want to save this payment method for future use?',
@@ -386,38 +436,39 @@ const CheckoutPage = () => {
   const getBookImage = (name) => getImgUrl(name);
 
   return (
-    <section className="bg-gray-50 min-h-screen py-8">
-      {/* Container width set to max-w-2xl */}
+    <section style={{ backgroundColor: 'rgb(250,248,230)' }} className="min-h-screen py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* Step Indicator */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            {steps.map(({ number, title }) => (
-              <div
-                key={number}
-                className="flex-1 flex flex-col items-center cursor-pointer"
-                onClick={() => handleStepClick(number)}
-              >
-                <div
-                  className={`w-10 h-10 flex items-center justify-center rounded-full border-2 ${
-                    step >= number ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'
-                  }`}
-                >
-                  {number}
-                </div>
-                <span className="mt-2 text-sm font-medium">{title}</span>
-              </div>
-            ))}
-          </div>
-          <div className="h-1 bg-gray-300 mt-4 relative">
-            <div
-              className="h-1 bg-blue-600 absolute top-0 left-0 transition-all duration-300"
-              style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
-            />
-          </div>
-        </div>
-
+        {/* Combined White Container */}
         <div className="bg-white shadow-md rounded-lg p-8">
+          {/* Step Indicator */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center">
+              {steps.map(({ number, title }) => (
+                <div
+                  key={number}
+                  className="flex-1 flex flex-col items-center cursor-pointer"
+                  onClick={() => handleStepClick(number)}
+                >
+                  <div
+                    className={`w-10 h-10 flex items-center justify-center rounded-full border-2 ${
+                      step >= number ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    {number}
+                  </div>
+                  <span className="mt-2 text-sm font-medium">{title}</span>
+                </div>
+              ))}
+            </div>
+            <div className="h-1 bg-gray-300 mt-4 relative">
+              <div
+                className="h-1 bg-blue-600 absolute top-0 left-0 transition-all duration-300"
+                style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Step 1: Personal Info */}
             {step === 1 && (
@@ -430,6 +481,7 @@ const CheckoutPage = () => {
                       {...register("name", { required: "Full name is required" })}
                       type="text"
                       placeholder="John Doe"
+                      defaultValue={currentUser?.displayName || ""}
                       className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
                     />
                     {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
@@ -450,6 +502,7 @@ const CheckoutPage = () => {
                       {...register("phone", { required: "Phone number is required" })}
                       type="text"
                       placeholder="+123 456 7890"
+                      defaultValue={editablePhone || ""}
                       className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
                     />
                     {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
@@ -514,7 +567,6 @@ const CheckoutPage = () => {
 
                 {(savedAddresses.length === 0 || selectedAddressOption === 'new') && (
                   <div className="space-y-4">
-                    {/* New Address: Title input added */}
                     <div className="flex flex-col">
                       <label className="block font-medium text-gray-700">Address Title</label>
                       <input
@@ -691,7 +743,7 @@ const CheckoutPage = () => {
                       {cartItems.map(item => (
                         <div key={item._id} className="flex justify-between items-center border-b pb-2">
                           <div className="flex items-center space-x-4">
-                            <img src={getBookImage(item.coverImage)} alt={item.title} className="w-16 h-20 object-cover rounded" />
+                            <img src={getImgUrl(item.coverImage).href} alt={item.title} className="w-16 h-20 object-cover rounded" />
                             <div>
                               <p className="font-medium">{item.title}</p>
                               <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
@@ -742,7 +794,7 @@ const CheckoutPage = () => {
               {step > 1 && (
                 <button
                   type="button"
-                  onClick={handleBackStep}
+                  onClick={() => setStep(step - 1)}
                   className="px-6 py-3 bg-gray-400 text-white rounded-md hover:bg-gray-500 transition-colors"
                 >
                   Back

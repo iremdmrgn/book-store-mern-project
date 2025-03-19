@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom'
 import { getImgUrl } from '../../utils/getImgUrl'
 import { FiShoppingCart, FiHeart } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
-import { addToCart } from '../../redux/features/cart/cartSlice'
+import { addToCartAsync } from '../../redux/features/cart/cartSlice'
 import { fetchFavorites, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice'
+import { LuTrash2 } from "react-icons/lu"
 
 const FavoritesPage = () => {
   const { currentUser } = useAuth()
@@ -14,7 +15,7 @@ const FavoritesPage = () => {
   const loading = useSelector(state => state.favorites.loading)
   const error = useSelector(state => state.favorites.error)
 
-  // Favoriler backend'den yüklensin
+  // Load favorites from backend
   useEffect(() => {
     if (currentUser && currentUser.uid) {
       dispatch(fetchFavorites(currentUser.uid.trim()))
@@ -23,23 +24,22 @@ const FavoritesPage = () => {
 
   const handleRemove = (favoriteRecord) => {
     if (currentUser && currentUser.uid) {
-      // Use productId if it exists; otherwise, use _id
+      // Use productId if available, otherwise fallback to favorites document _id
       const itemId = favoriteRecord.productId || favoriteRecord._id;
-      console.log("Removing favorite with id:", itemId);
-      dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId }));
+      dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId }))
     }
   }
   
-  // Add to Cart işlemi için favori öğesinden gelen veriyi, cart'in beklediği yapıya dönüştürüyoruz.
+  // Handler to add favorite book to cart
   const handleAddToCart = (fav) => {
     const bookForCart = {
-      productId: fav.productId || fav._id, // Eğer productId yoksa favori kaydının _id'sini kullan
+      productId: fav.productId || fav._id,
       title: fav.title,
       coverImage: fav.coverImage,
       newPrice: fav.newPrice,
       quantity: 1,
     }
-    dispatch(addToCart(bookForCart))
+    dispatch(addToCartAsync({ userId: currentUser.uid, item: bookForCart }))
   }
 
   const handleStartShopping = () => {
@@ -50,50 +50,64 @@ const FavoritesPage = () => {
   if (error) return <div>Error: {error.message ? error.message : JSON.stringify(error)}</div>
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 bg-[rgba(240,238,215,0.1)]">
-      <h2 className="text-3xl font-semibold mb-6 text-center">Your Favorites</h2>
+    <div className="max-w-4xl mx-auto px-4 py-2 bg-[rgba(240,238,215,0.1)]">
+      <h2 
+        className="text-4xl font-semibold mb-6 text-center" 
+        style={{ fontFamily: "Lobster, cursive" }}
+      >
+        Your Favorites
+      </h2>
       {favorites.length > 0 ? (
-        favorites.map(fav => (
-          <div key={fav._id} className="relative mb-6 p-4 border border-gray-300 rounded-xl shadow-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-            {/* Remove Button */}
-            <button
-              onClick={() => handleRemove(fav)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-600 focus:outline-none"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {favorites.map(fav => (
+            <div 
+              key={fav._id} 
+              className="rounded-lg transition-shadow duration-300 w-full max-w-[200px] mx-auto shadow-lg hover:shadow-2xl relative"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              {/* Trash Icon for removal */}
+              <button
+                onClick={() => handleRemove(fav)}
+                className="absolute top-2 right-2 text-lg cursor-pointer z-10"
+              >
+                <LuTrash2 size={20} />
+              </button>
 
-            <div className="flex items-center gap-4">
-              {/* Book Image */}
-              <Link to={`/books/${fav.productId}`} className="flex-shrink-0">
-                <img
-                  src={`${getImgUrl(fav?.coverImage)}`}
-                  alt="Book cover"
-                  className="w-24 h-32 object-cover rounded-lg shadow-md"
-                />
-              </Link>
+              <div 
+                className="flex flex-col items-center gap-3 p-3 border rounded-md" 
+                style={{ backgroundColor: 'rgba(150,150,170,0.3)' }}
+              >
+                {/* Book Image */}
+                <div className="h-32 w-32 border rounded-md overflow-hidden">
+                  <Link to={`/book/${fav.productId || fav._id.toString()}`}>
+                    <img
+                      src={`${getImgUrl(fav?.coverImage)}`}
+                      alt="Book cover"
+                      className="w-full h-full object-cover"
+                    />
+                  </Link>
+                </div>
 
-              {/* Book Information */}
-              <div className="flex-grow">
-                <Link to={`/books/${fav.productId}`}>
-                  <h3 className="text-lg font-semibold text-gray-800 hover:text-blue-600">{fav?.title}</h3>
-                </Link>
-                <p className="text-sm text-gray-600 mt-2">{fav?.description}</p>
+                {/* Book Information */}
+                <div className="text-center w-full">
+                  <Link to={`/book/${fav.productId || fav._id.toString()}`}>
+                    <h3 className="text-sm font-semibold mb-2 truncate">
+                      {fav?.title || 'No title available'}
+                    </h3>
+                  </Link>
 
-                {/* Add to Cart Button */}
-                <button
-                  onClick={() => handleAddToCart(fav)}
-                  className="mt-4 px-4 py-1 bg-yellow-500 text-black font-semibold rounded-full hover:bg-yellow-600 transition-colors flex items-center gap-2"
-                >
-                  <FiShoppingCart /> 
-                  <span className="truncate">Add to Cart</span>
-                </button>
+                  {/* Add to Cart Button */}
+                  <button
+                    onClick={() => handleAddToCart(fav)}
+                    className="mt-4 px-4 py-2 bg-yellow-500 text-black font-semibold rounded-full hover:bg-yellow-600 transition-colors flex items-center justify-center gap-1 w-full"
+                  >
+                    <FiShoppingCart size={14} />
+                    <span className="text-xs">Add to Cart</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl shadow-lg bg-gray-50">
           <FiHeart className="text-6xl text-red-500 mb-4" />
@@ -103,7 +117,7 @@ const FavoritesPage = () => {
           </p>
           <button 
             onClick={handleStartShopping}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors"
+            className="mt-4 px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white font-bold rounded-full shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
           >
             Start Shopping
           </button>

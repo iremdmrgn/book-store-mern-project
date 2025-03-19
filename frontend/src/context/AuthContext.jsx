@@ -68,24 +68,28 @@ export const AuthProvide = ({ children }) => {
     return signOut(auth);
   };
 
-  // Listen to auth state changes and sync account data to MongoDB
+  // Listen to auth state changes and sync account data to MongoDB only once per session.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLoading(false);
       if (user) {
-        const { uid, email, displayName } = user;
-        const [firstName, lastName] = displayName ? displayName.split(" ") : [email, ""];
-        try {
-          await axios.post("http://localhost:5000/api/account/sync", {
-            uid,
-            firstName,
-            lastName,
-            email,
-            phone: user.phoneNumber || "",
-          });
-        } catch (error) {
-          console.error("Failed to sync account:", error);
+        // Only sync if accountSynced flag is not set in localStorage
+        if (!localStorage.getItem("accountSynced")) {
+          const { uid, email, displayName } = user;
+          const [firstName, lastName] = displayName ? displayName.split(" ") : [email, ""];
+          try {
+            await axios.post("http://localhost:5000/api/account/sync", {
+              uid,
+              firstName,
+              lastName,
+              email,
+              phone: user.phoneNumber || "",
+            });
+            localStorage.setItem("accountSynced", "true");
+          } catch (error) {
+            console.error("Failed to sync account:", error);
+          }
         }
       }
     });
@@ -105,3 +109,5 @@ export const AuthProvide = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export default AuthProvide;

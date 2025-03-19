@@ -17,14 +17,14 @@ const accountSchema = new mongoose.Schema({
   },
   email: { 
     type: String, 
-    required: true, 
-    unique: true 
+    required: true,
+    // Remove unique: true temporarily
+    // unique: true 
   },
   phone: {
     type: String,
     required: true
   }
-  // Other fields if needed...
 }, { timestamps: true });
 
 module.exports = mongoose.model('Account', accountSchema);
