@@ -8,8 +8,16 @@ import axios from "axios";
 import { FaEdit } from "react-icons/fa";
 import { PiShippingContainer } from "react-icons/pi";
 import ReactDOMServer from "react-dom/server";
-// Import Firebase methods for updating profile, email, and reauthentication
-import { updateProfile, updateEmail, reauthenticateWithCredential, reauthenticateWithPopup, EmailAuthProvider, GoogleAuthProvider } from "firebase/auth";
+import {
+  updateProfile,
+  updateEmail,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+} from "firebase/auth";
+import { LuTrash2 } from "react-icons/lu";
+import { MdAddHome, MdOutlineAddCard } from "react-icons/md";
 
 const Profile = () => {
   const { currentUser, logout, refreshUser } = useAuth();
@@ -20,7 +28,6 @@ const Profile = () => {
   const [selectedTab, setSelectedTab] = useState("userInfo");
 
   useEffect(() => {
-    // Örneğin, URL "/profile/orders" ise, pathParts[2] "orders" olacaktır
     const pathParts = location.pathname.split("/");
     const tab = pathParts[2] || "userInfo";
     setSelectedTab(tab);
@@ -33,7 +40,7 @@ const Profile = () => {
 
   const [addresses, setAddresses] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [favorites, setFavorites] = useState([]); // favorites state remains unchanged
+  const [favorites, setFavorites] = useState([]);
 
   // Address form state (for adding new address)
   const [newAddressTitle, setNewAddressTitle] = useState("");
@@ -78,10 +85,12 @@ const Profile = () => {
   const [editableEmail, setEditableEmail] = useState(currentUser?.email || "");
   const [editablePhone, setEditablePhone] = useState(currentUser?.phone || "");
 
-  // New useEffect to update local editable states when currentUser changes
+  // Update local editable states when currentUser changes
   useEffect(() => {
     if (currentUser) {
-      const parts = currentUser.displayName ? currentUser.displayName.split(" ") : [];
+      const parts = currentUser.displayName
+        ? currentUser.displayName.split(" ")
+        : [];
       setEditableFirstName(parts[0] || currentUser.email || "");
       setEditableLastName(parts[1] || "");
       setEditableEmail(currentUser.email || "");
@@ -89,11 +98,12 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  // NEW: Function to fetch updated account info from MongoDB
+  // Function to fetch updated account info from MongoDB
   const fetchAccount = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
-      // Update local state with MongoDB account data
+      const response = await axios.get(
+        `http://localhost:5000/api/account/${currentUser.uid}`
+      );
       setEditableFirstName(response.data.firstName);
       setEditableLastName(response.data.lastName);
       setEditableEmail(response.data.email);
@@ -104,39 +114,38 @@ const Profile = () => {
     }
   };
 
-  // Call fetchAccount when currentUser changes (optional)
+  // Call fetchAccount when currentUser changes
   useEffect(() => {
     if (currentUser) {
       fetchAccount();
     }
   }, [currentUser]);
 
-  // Function to update user information to backend and Firebase with reauthentication
+  // Update user information with reauthentication
   const handleUpdateUser = async () => {
     try {
-      // Reauthenticate differently based on the provider
       if (currentUser.providerData[0]?.providerId === "google.com") {
-        // For Google, use a popup reauthentication
         await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
       } else {
-        // For email/password, prompt for password reauthentication
-        const currentPassword = prompt("Please enter your current password to update your email:");
+        const currentPassword = prompt(
+          "Please enter your current password to update your email:"
+        );
         if (!currentPassword) {
           throw new Error("Password is required for reauthentication");
         }
-        const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+        const credential = EmailAuthProvider.credential(
+          currentUser.email,
+          currentPassword
+        );
         await reauthenticateWithCredential(currentUser, credential);
       }
 
-      // Update Firebase profile: update displayName
       await updateProfile(currentUser, {
         displayName: `${editableFirstName} ${editableLastName}`,
       });
-      // If email changed, update it in Firebase as well
       if (editableEmail !== currentUser.email) {
         await updateEmail(currentUser, editableEmail);
       }
-      // Update account info in MongoDB
       await axios.put(
         `http://localhost:5000/api/account/${currentUser.uid.trim()}`,
         {
@@ -146,7 +155,6 @@ const Profile = () => {
           phone: editablePhone,
         }
       );
-      // After successful update, refresh Firebase user info and fetch updated account data
       await refreshUser();
       await fetchAccount();
       Swal.fire({
@@ -488,7 +496,6 @@ const Profile = () => {
     }
   };
 
-  // --- Order Details Pop-up ---
   const handleOrderClick = (order) => {
     const iconHtml = ReactDOMServer.renderToStaticMarkup(
       <PiShippingContainer size={24} />
@@ -544,7 +551,6 @@ const Profile = () => {
     });
   };
 
-  // --- Reviews Operations ---
   const handleDeleteReview = async (reviewId) => {
     try {
       await axios.delete(`http://localhost:5000/api/reviews/${reviewId}`);
@@ -607,7 +613,10 @@ const Profile = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      <h2 className="text-4xl font-bold text-gray-800">Welcome,</h2>
+      {/* Apply Lobster font via inline style */}
+      <h2 style={{ fontFamily: "Lobster, cursive" }} className="text-4xl font-bold text-gray-800">
+        Welcome,
+      </h2>
 
       <div className="flex items-center mt-4">
         <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white text-xl font-semibold">
@@ -634,7 +643,6 @@ const Profile = () => {
               key={key}
               onClick={() => {
                 handleTabChange(key);
-                // reset any edit states when switching tabs
                 cancelEditAddress();
                 cancelEditPayment();
               }}
@@ -644,7 +652,7 @@ const Profile = () => {
                   : "bg-[rgba(150,150,170,0.3)] text-gray-600 hover:bg-blue-50"
               }`}
             >
-              <i className={`${icon} mr-2`} style={{ fontSize: "1.2rem" }}></i>
+              <i className={`${icon} ml-2 mr-2`} style={{ fontSize: "1.2rem" }}></i>
               {label}
             </button>
           ))}
@@ -657,125 +665,102 @@ const Profile = () => {
         </div>
 
         <div className="w-3/4">
-          {/* Payment Methods Tab */}
+          {/* Redesigned Payment Methods Tab */}
           {selectedTab === "payment" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-3xl font-semibold text-gray-800">
+            <div className="p-8 bg-white shadow-xl rounded-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800">
                   Your Payment Methods
                 </h3>
                 <button
                   onClick={() => setSelectedTab("addPayment")}
-                  className="px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 shadow-md"
+                  className="inline-flex items-center px-4 py-1 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-900 transition text-sm"
                 >
+                  <MdOutlineAddCard size={18} className="mr-2" />
                   Add New Payment Method
                 </button>
               </div>
               <div className="grid gap-4">
                 {payments.length === 0 ? (
-                  <p>No payment methods added.</p>
+                  <p className="text-gray-500">No payment methods added.</p>
                 ) : (
                   payments.map((payment) => (
                     <div
                       key={payment._id}
-                      className="p-4 bg-gray-100 rounded-lg mb-4 relative"
+                      className="flex items-center justify-between p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-sm relative min-h-[150px]"
                     >
                       {editPaymentId === payment._id ? (
-                        <div>
-                          <div className="grid gap-2">
+                        <div className="w-full">
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Card Number
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Card Number</label>
                               <input
                                 type="text"
                                 value={editCardNumber}
-                                onChange={(e) =>
-                                  setEditCardNumber(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditCardNumber(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Expiry Date
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Expiry Date</label>
                               <input
                                 type="text"
                                 value={editExpiryDate}
-                                onChange={(e) =>
-                                  setEditExpiryDate(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditExpiryDate(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                CVV
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">CVV</label>
                               <input
                                 type="text"
                                 value={editCvv}
                                 onChange={(e) => setEditCvv(e.target.value)}
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Cardholder Name
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Cardholder Name</label>
                               <input
                                 type="text"
                                 value={editCardHolder}
-                                onChange={(e) =>
-                                  setEditCardHolder(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditCardHolder(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                           </div>
-                          <div className="mt-2 flex space-x-2">
+                          <div className="mt-2 flex justify-end space-x-4">
                             <button
                               onClick={() => handleUpdatePayment(payment._id)}
-                              className="px-3 py-1 bg-green-600 text-white rounded"
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                             >
                               Save
                             </button>
                             <button
                               onClick={cancelEditPayment}
-                              className="px-3 py-1 bg-gray-400 text-white rounded"
+                              className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
                             >
                               Cancel
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <div className="absolute top-2 right-2">
-                            <button
-                              onClick={() => startEditPayment(payment)}
-                              className="text-blue-600"
-                            >
-                              <FaEdit size={24} />
-                            </button>
-                          </div>
-                          <p className="font-semibold">
-                            Cardholder: {payment.cardHolder}
-                          </p>
-                          <p>
-                            Card Number: **** **** ****{" "}
-                            {payment.cardNumber.slice(-4)}
-                          </p>
-                          <p>Expiry Date: {payment.expiryDate}</p>
-                          <div className="mt-2">
-                            <button
-                              onClick={() => handleDeletePayment(payment._id)}
-                              className="text-red-600"
-                            >
-                              Delete Payment
-                            </button>
-                          </div>
+                        <div className="relative">
+                        <div className="absolute -top-6 -right-[590px] text-red-600 hover:text-red-800 transition">
+                          <button onClick={() => handleDeletePayment(payment._id)}>
+                            <LuTrash2 size={20} />
+                          </button>
                         </div>
+                        <div className="absolute top-20 -right-[600px] text-blue-600 hover:text-blue-800 transition">
+                          <button onClick={() => startEditPayment(payment)}>
+                            <FaEdit size={24} />
+                          </button>
+                        </div>
+                        <p className="font-semibold">Cardholder: {payment.cardHolder}</p>
+                        <p>Card Number: **** **** **** {payment.cardNumber.slice(-4)}</p>
+                        <p>Expiry Date: {payment.expiryDate}</p>
+                      </div>
+                      
                       )}
                     </div>
                   ))
@@ -786,7 +771,7 @@ const Profile = () => {
 
           {selectedTab === "addPayment" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800 mb-4">
                 Add New Payment Method
               </h3>
               <div className="grid gap-4">
@@ -847,7 +832,7 @@ const Profile = () => {
           {/* Orders Tab */}
           {selectedTab === "orders" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800 mb-4">
                 Your Orders
               </h3>
               <div>
@@ -895,8 +880,8 @@ const Profile = () => {
 
           {/* User Information Tab */}
           {selectedTab === "userInfo" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+            <div className="p-6 border rounded-2xl bg-white text-black shadow-lg">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800 mb-4">
                 Your Information
               </h3>
               <div className="grid gap-4">
@@ -955,180 +940,153 @@ const Profile = () => {
             </div>
           )}
 
-          {/* Addresses Tab */}
+          {/* Redesigned Addresses Tab */}
           {selectedTab === "address" && (
-            <div className="p-6 border rounded-lg bg-white text-black shadow-lg relative">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-3xl font-semibold text-gray-800">
+            <div className="p-8 bg-white shadow-xl rounded-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800">
                   Your Addresses
                 </h3>
                 <button
                   onClick={() => setSelectedTab("addAddress")}
-                  className="px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 shadow-md"
+                  className="inline-flex items-center px-4 py-1 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition text-sm"
                 >
+                  <MdAddHome size={18} className="mr-2" />
                   Add New Address
                 </button>
               </div>
-              <div className="grid gap-4">
-                {addresses.length === 0 ? (
-                  <p>No addresses added.</p>
-                ) : (
-                  addresses.map((address) => (
+              {addresses.length === 0 ? (
+                <p className="text-gray-500">No addresses added.</p>
+              ) : (
+                <div className="space-y-4">
+                  {addresses.map((address) => (
                     <div
                       key={address._id}
-                      className="p-4 bg-gray-100 rounded-lg mb-4 relative"
+                      className="flex items-center justify-between p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
                     >
                       {editAddressId === address._id ? (
-                        <div>
-                          <div className="grid gap-2">
+                        <div className="w-full">
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Title
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Title</label>
                               <input
                                 type="text"
                                 value={editAddressTitle}
-                                onChange={(e) =>
-                                  setEditAddressTitle(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditAddressTitle(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Street
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Street</label>
                               <input
                                 type="text"
                                 value={editStreet}
                                 onChange={(e) => setEditStreet(e.target.value)}
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                City
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">City</label>
                               <input
                                 type="text"
                                 value={editCity}
                                 onChange={(e) => setEditCity(e.target.value)}
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                District
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">District</label>
                               <input
                                 type="text"
                                 value={editDistrict}
-                                onChange={(e) =>
-                                  setEditDistrict(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditDistrict(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Neighborhood
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Neighborhood</label>
                               <input
                                 type="text"
                                 value={editNeighborhood}
-                                onChange={(e) =>
-                                  setEditNeighborhood(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditNeighborhood(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Postal Code
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Postal Code</label>
                               <input
                                 type="text"
                                 value={editPostalCode}
-                                onChange={(e) =>
-                                  setEditPostalCode(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditPostalCode(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="block font-semibold text-gray-700">
-                                Country
-                              </label>
+                              <label className="text-sm font-semibold text-gray-700">Country</label>
                               <input
                                 type="text"
                                 value={editCountry}
-                                onChange={(e) =>
-                                  setEditCountry(e.target.value)
-                                }
-                                className="border p-2 rounded-md focus:ring-blue-800 focus:border-blue-800"
+                                onChange={(e) => setEditCountry(e.target.value)}
+                                className="border p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                           </div>
-                          <div className="mt-2 flex space-x-2">
+                          <div className="mt-4 flex justify-end space-x-4">
                             <button
                               onClick={() => handleUpdateAddress(address._id)}
-                              className="px-3 py-1 bg-green-600 text-white rounded"
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                             >
                               Save
                             </button>
                             <button
                               onClick={cancelEditAddress}
-                              className="px-3 py-1 bg-gray-400 text-white rounded"
+                              className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
                             >
                               Cancel
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <div className="absolute top-2 right-2">
-                            <button
-                              onClick={() => startEditAddress(address)}
-                              className="text-blue-600"
+                        <div className="flex-1">
+                          <h4 className="text-xl font-bold text-gray-700">{address.title}</h4>
+                          <p className="text-gray-600 mt-1">{address.street}</p>
+                          <p className="text-gray-600">
+                            {address.city}, {address.district}, {address.neighborhood}
+                          </p>
+                          <p className="text-gray-600">{address.postalCode}, {address.country}</p>
+                          <div className="relative">
+                            {/* Delete Icon positioned further above (negative top) at top-left */}
+                            <button 
+                              onClick={() => handleDeleteAddress(address._id)} 
+                              className="absolute -top-28 -right-2 text-red-600 hover:text-red-800 transition"
+                            >
+                              <LuTrash2 size={20} />
+                            </button>
+                            {/* Edit Icon positioned further above (negative top) at top-right */}
+                            <button 
+                              onClick={() => startEditAddress(address)} 
+                              className="absolute -top-2 -right-4 text-blue-600 hover:text-blue-800 transition"
                             >
                               <FaEdit size={24} />
-                            </button>
-                          </div>
-                          <p className="font-semibold">{address.title}</p>
-                          <p>{address.street}</p>
-                          <p>
-                            {address.city}, {address.district},{" "}
-                            {address.neighborhood}
-                          </p>
-                          <p>{address.postalCode}</p>
-                          <p>{address.country}</p>
-                          <div className="mt-2">
-                            <button
-                              onClick={() => handleDeleteAddress(address._id)}
-                              className="mt-2 text-red-600"
-                            >
-                              Delete Address
                             </button>
                           </div>
                         </div>
                       )}
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {selectedTab === "addAddress" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800 mb-4">
                 Add New Address
               </h3>
               <div className="grid gap-4">
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    Title
-                  </label>
+                  <label className="block font-semibold text-gray-700">Title</label>
                   <input
                     type="text"
                     value={newAddressTitle}
@@ -1137,9 +1095,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    Street
-                  </label>
+                  <label className="block font-semibold text-gray-700">Street</label>
                   <input
                     type="text"
                     value={newStreet}
@@ -1148,9 +1104,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    City
-                  </label>
+                  <label className="block font-semibold text-gray-700">City</label>
                   <input
                     type="text"
                     value={newCity}
@@ -1159,9 +1113,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    District
-                  </label>
+                  <label className="block font-semibold text-gray-700">District</label>
                   <input
                     type="text"
                     value={newDistrict}
@@ -1170,9 +1122,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    Neighborhood
-                  </label>
+                  <label className="block font-semibold text-gray-700">Neighborhood</label>
                   <input
                     type="text"
                     value={newNeighborhood}
@@ -1181,9 +1131,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    Postal Code
-                  </label>
+                  <label className="block font-semibold text-gray-700">Postal Code</label>
                   <input
                     type="text"
                     value={newPostalCode}
@@ -1192,9 +1140,7 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="block font-semibold text-gray-700">
-                    Country
-                  </label>
+                  <label className="block font-semibold text-gray-700">Country</label>
                   <input
                     type="text"
                     value={newCountry}
@@ -1215,7 +1161,7 @@ const Profile = () => {
           {/* Reviews Tab */}
           {selectedTab === "reviews" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg">
-              <h3 className="text-3xl font-semibold text-gray-800 mb-4">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-gray-800 mb-4">
                 Your Reviews
               </h3>
               <div className="mt-8 space-y-4">
