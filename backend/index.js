@@ -1,8 +1,8 @@
-// server.js or app.js
 const express = require("express");
 const app = express();
 const cors = require("cors");
 const mongoose = require("mongoose");
+const path = require('path');
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
@@ -17,6 +17,9 @@ app.use(
   })
 );
 
+// Statik dosyaların sunulması için "public" klasörünü tanımlıyoruz.
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Import routes
 const bookRoutes = require("./src/books/book.route");
 const orderRoutes = require("./src/orders/order.route");
@@ -29,6 +32,9 @@ const addressRoutes = require("./src/address/addressRoutes.js");
 const paymentMethodRoutes = require("./src/PaymentMethod/PaymentMethod.route.js");
 const accountRoutes = require("./src/account/account.routes");
 
+// Dashboard route'larını ekleyelim
+const dashboardRoutes = require("./src/dashboard/dashboardRoutes");
+
 // Mount routes
 app.use("/api/account", accountRoutes);
 app.use("/api/books", bookRoutes);
@@ -40,12 +46,14 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/payment-method", paymentMethodRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Default route
 app.use("/", (req, res) => {
   res.json({ message: "Book Store Server is running!" });
 });
 
+// MongoDB bağlantısı
 mongoose
   .connect(process.env.DB_URL)
   .then(() => console.log("Mongodb connected successfully!"))

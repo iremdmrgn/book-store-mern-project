@@ -114,7 +114,7 @@ const Navbar = () => {
         </div>
 
         {/* Icons on the right */}
-        <div className="flex items-center gap-2 ml-auto mt-12">
+        <div className="flex items-center gap-2 ml-auto mt-12 mr-2">
           {/* Favorites Icon */}
           <Link to="/favorites" className="relative flex items-center">
             <HiOutlineHeart className="text-2xl text-gray-700 hover:text-gray-900 transition duration-300" />

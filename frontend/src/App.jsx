@@ -3,8 +3,8 @@ import './App.css';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { AuthProvide } from './context/AuthContext';
-import Profile from './pages/profile/Profile'; // Profile sayfasını buraya import ettik.
-import SearchPage from './pages/SearchPage'; // SearchPage import ettik.
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const location = useLocation(); // Geçerli sayfa yolunu almak için
@@ -18,6 +18,8 @@ function App() {
           <Outlet />
         </main>
         <Footer />
+        {/* Toast bildirimlerinin çalışabilmesi için ToastContainer ekleyin */}
+        <ToastContainer />
       </AuthProvide>
     </>
   );

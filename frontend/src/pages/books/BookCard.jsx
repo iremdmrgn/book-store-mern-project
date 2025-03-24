@@ -2,7 +2,7 @@ import React from 'react';
 import { FiShoppingCart } from 'react-icons/fi';
 import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
 import { getImgUrl } from '../../utils/getImgUrl';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCartAsync } from '../../redux/features/cart/cartSlice';
 import { addFavoriteAsync, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice';
@@ -14,19 +14,19 @@ const BookCard = ({ book }) => {
   const { currentUser } = useAuth();
   const favorites = useSelector((state) => state.favorites.items);
 
-  // isFavorite kontrolünü, favori objesinde productId varsa onu, yoksa _id'yi kullanarak yapıyoruz
+  // Favori kontrolü: Eğer favori objesinde productId varsa onu, yoksa _id'yi kullanıyoruz.
   const isFavorite = favorites?.some((favorite) => {
     const favId = favorite.productId ? favorite.productId.toString() : favorite._id?.toString();
     return favId === book._id.toString();
   });
 
-  // Ürünü sepete eklemek için gerekli payload'ı oluşturun
+  // Sepete ekleme işlemi
   const handleAddToCart = () => {
     if (currentUser && currentUser.uid) {
       const itemPayload = {
-        productId: book._id, // Backend'in beklediği alan
+        productId: book._id,
         title: book.title,
-        coverImage: book.coverImage,
+        coverImage: book.coverImage, // Veritabanında "book-1.png" gibi saklanıyorsa getImgUrl fonksiyonuyla URL oluşturulacak.
         newPrice: book.newPrice,
         quantity: 1,
       };
@@ -49,6 +49,7 @@ const BookCard = ({ book }) => {
     }
   };
 
+  // Kitap detay sayfasına yönlendirme
   const handleBookClick = () => {
     navigate(`/book/${book._id}`);
   };
@@ -59,16 +60,15 @@ const BookCard = ({ book }) => {
         <div className="h-32 w-32 border rounded-md overflow-hidden m-0">
           <div onClick={handleBookClick}>
             <img
-              src={getImgUrl(book?.coverImage) || '/default-image.jpg'}
+              src={getImgUrl(book?.coverImage)}
               alt="Book cover"
               className="w-full h-full object-cover"
             />
           </div>
         </div>
-
         <div className="text-center w-full">
           <div onClick={handleBookClick}>
-            <h3 className="text-sm font-semibold  mb-2 truncate">
+            <h3 className="text-sm font-semibold mb-2 truncate">
               {book?.title || 'No title available'}
             </h3>
           </div>
@@ -83,7 +83,6 @@ const BookCard = ({ book }) => {
               ${book?.oldPrice}
             </span>
           </p>
-
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={handleAddToCart}
@@ -93,7 +92,6 @@ const BookCard = ({ book }) => {
               <span className="truncate">Add to Cart</span>
             </button>
           </div>
-
           <button
             onClick={handleAddToFavorites}
             className="absolute top-2 right-2 text-lg cursor-pointer z-10"

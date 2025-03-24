@@ -2,24 +2,25 @@ const express = require('express');
 const Book = require('./book.model');
 const { postABook, getAllBooks, getSingleBook, UpdateBook, deleteABook } = require('./book.controller');
 const verifyAdminToken = require('../middleware/verifyAdminToken');
+const upload = require('../utils/multerConfig'); // Multer yapılandırma dosyanızın yolu
 const router = express.Router();
 
-// post a book
-router.post("/create-book", verifyAdminToken, postABook);
+// POST: Kitap oluştururken dosya yüklemesini gerçekleştiriyoruz.
+router.post("/create-book", verifyAdminToken, upload.single('coverImageFile'), postABook);
 
-// get all books
+// GET: Tüm kitapları getir
 router.get("/", getAllBooks);
 
-// single book endpoint
+// GET: Tekil kitap bilgisi
 router.get("/:id", getSingleBook);
 
-// update a book endpoint
-router.put("/edit/:id", verifyAdminToken, UpdateBook);
+// PUT: Kitap güncelleme (dosya güncellemesi için multer middleware ekleniyor)
+router.put("/edit/:id", verifyAdminToken, upload.single('coverImageFile'), UpdateBook);
 
-// delete a book
+// DELETE: Kitap silme
 router.delete("/:id", verifyAdminToken, deleteABook);
 
-// Arama fonksiyonu (Yeni eklenen kısım)
+// GET: Arama fonksiyonu
 router.get("/search", async (req, res) => {
   try {
     const { query } = req.query; // Kullanıcıdan gelen arama sorgusu
@@ -32,7 +33,7 @@ router.get("/search", async (req, res) => {
     const books = await Book.find({
       $or: [
         { title: { $regex: query, $options: 'i' } },   // Kitap başlığında arama yap
-        { author: { $regex: query, $options: 'i' } }   // Yazar adında arama yap
+        { author: { $regex: query, $options: 'i' } }     // Yazar adında arama yap
       ]
     });
 

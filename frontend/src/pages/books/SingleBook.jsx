@@ -1,38 +1,38 @@
-import React, { useState, useEffect } from 'react'
-import { HiOutlineHeart, HiHeart, HiOutlineShare } from 'react-icons/hi2'
-import { useParams, Navigate } from 'react-router-dom'
-import { getImgUrl } from '../../utils/getImgUrl'
-import { useDispatch, useSelector } from 'react-redux'
-import { addToCartAsync } from '../../redux/features/cart/cartSlice'
-import { addFavoriteAsync, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice'
-import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi'
-import { useAuth } from '../../context/AuthContext'
-import axios from 'axios'
+import React, { useState, useEffect } from 'react';
+import { HiOutlineHeart, HiHeart, HiOutlineShare } from 'react-icons/hi2';
+import { useParams, Navigate } from 'react-router-dom';
+import { getImgUrl } from '../../utils/getImgUrl';
+import { useDispatch, useSelector } from 'react-redux';
+import { addToCartAsync } from '../../redux/features/cart/cartSlice';
+import { addFavoriteAsync, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice';
+import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
 
 const SingleBook = () => {
-  const { id } = useParams()
-  const { data: book, isLoading, isError, error } = useFetchBookByIdQuery(id)
-  const dispatch = useDispatch()
-  const favorites = useSelector((state) => state.favorites.items)
-  const { currentUser } = useAuth()
+  const { id } = useParams();
+  const { data: book, isLoading, isError, error } = useFetchBookByIdQuery(id);
+  const dispatch = useDispatch();
+  const favorites = useSelector((state) => state.favorites.items);
+  const { currentUser } = useAuth();
 
-  const [rating, setRating] = useState(0)
-  const [reviewText, setReviewText] = useState('')
-  const [reviews, setReviews] = useState([])
-  const [reviewSubmitted, setReviewSubmitted] = useState(false)
-  const [activeTab, setActiveTab] = useState('description')
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [activeTab, setActiveTab] = useState('description');
 
-  // Compare IDs as strings to detect if book is already a favorite
+  // Favori kontrolü: favori objesinde productId varsa onu, yoksa _id kullanıyoruz.
   const isFavorite = favorites.some(
     (fav) => (fav.productId || fav._id).toString() === book?._id.toString()
-  )
+  );
 
-  // Function to submit a review
+  // Review gönderme fonksiyonu
   const handleReviewSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (rating === 0) {
-      alert("Please provide a rating before submitting.")
-      return
+      alert("Please provide a rating before submitting.");
+      return;
     }
     const newReview = {
       bookId: book._id,
@@ -40,36 +40,36 @@ const SingleBook = () => {
       reviewer: currentUser.displayName || currentUser.email || "Anonymous",
       rating,
       text: reviewText,
-    }
+    };
     try {
-      const response = await axios.post('http://localhost:5000/api/reviews', newReview)
-      setReviews([response.data, ...reviews])
-      setReviewSubmitted(true)
-      setRating(0)
-      setReviewText('')
+      const response = await axios.post('http://localhost:5000/api/reviews', newReview);
+      setReviews([response.data, ...reviews]);
+      setReviewSubmitted(true);
+      setRating(0);
+      setReviewText('');
     } catch (err) {
-      console.error("Error submitting review:", err)
-      alert("Failed to submit review. Please try again.")
+      console.error("Error submitting review:", err);
+      alert("Failed to submit review. Please try again.");
     }
-  }
+  };
 
-  // Fetch reviews for the book
+  // Kitap için review'ları çek
   const fetchReviewsForBook = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`)
-      setReviews(response.data)
+      const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`);
+      setReviews(response.data);
     } catch (err) {
-      console.error("Error fetching reviews:", err)
+      console.error("Error fetching reviews:", err);
     }
-  }
+  };
 
   useEffect(() => {
     if (book) {
-      fetchReviewsForBook()
+      fetchReviewsForBook();
     }
-  }, [book])
+  }, [book]);
 
-  // Add to Cart function
+  // Sepete ekleme fonksiyonu
   const handleAddToCart = (product) => {
     const productData = {
       productId: product._id,
@@ -77,38 +77,36 @@ const SingleBook = () => {
       coverImage: product.coverImage,
       newPrice: product.newPrice,
       quantity: 1,
-    }
-    dispatch(addToCartAsync({ userId: currentUser.uid, item: productData }))
-  }
+    };
+    dispatch(addToCartAsync({ userId: currentUser.uid, item: productData }));
+  };
 
-  // Favorite toggle function with duplicate check using string comparison
+  // Favori toggle fonksiyonu
   const handleFavoriteToggle = () => {
     if (currentUser && currentUser.uid) {
       if (isFavorite) {
-        dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: book._id.toString() }))
+        dispatch(removeFavoriteAsync({ userId: currentUser.uid.trim(), itemId: book._id.toString() }));
       } else {
         const favoriteData = {
           productId: book._id.toString(),
           title: book.title,
           coverImage: book.coverImage,
           newPrice: book.newPrice,
-        }
-        dispatch(addFavoriteAsync({ userId: currentUser.uid.trim(), item: favoriteData }))
+        };
+        dispatch(addFavoriteAsync({ userId: currentUser.uid.trim(), item: favoriteData }));
       }
     } else {
-      alert('Please log in to manage favorites.')
+      alert('Please log in to manage favorites.');
     }
-  }
+  };
 
-  if (isLoading) return <div>Loading...</div>
-  
+  if (isLoading) return <div>Loading...</div>;
   if (isError) {
-    console.error('Error fetching book data:', error)
-    return <div>Error occurred: {error?.message || 'Unknown error'}</div>
+    console.error('Error fetching book data:', error);
+    return <div>Error occurred: {error?.message || 'Unknown error'}</div>;
   }
-
   if (!book) {
-    return <Navigate to="/" />
+    return <Navigate to="/" />;
   }
 
   return (
@@ -118,7 +116,7 @@ const SingleBook = () => {
         <div className="flex items-start gap-4 ml-4">
           <div className="w-64 h-auto overflow-hidden">
             <img
-              src={book.coverImage ? getImgUrl(book.coverImage).href : '/default-image.jpg'}
+              src={book.coverImage ? getImgUrl(book.coverImage) : '/default-image.jpg'}
               alt={book.title}
               className="w-full h-full object-cover transition-all duration-300 hover:scale-105 rounded-lg shadow-lg"
             />
@@ -142,11 +140,9 @@ const SingleBook = () => {
             </button>
           </div>
         </div>
-
         <div className="space-y-4">
           {/* Book Title */}
           <h1 className="text-4xl font-semibold text-gray-900 ">{book.title}</h1>
-
           {/* Book Details */}
           <div className="text-sm text-gray-600 space-y-2">
             <p><strong className="font-semibold text-gray-800">Author:</strong> {book.author || 'Unknown'}</p>
@@ -154,12 +150,10 @@ const SingleBook = () => {
             <p><strong className="font-semibold text-gray-800">Language:</strong> {book.language || 'English'}</p>
             <p><strong className="font-semibold text-gray-800">First Edition Year:</strong> {book.editionYear || 'N/A'}</p>
           </div>
-
           {/* Book Price */}
           <div className="text-3xl font-bold text-black mb-6">
             {book.newPrice ? `$${book.newPrice}` : 'Price not available'}
           </div>
-
           {/* Add to Cart Button */}
           <div className="flex gap-6 mb-6">
             <button
@@ -171,7 +165,6 @@ const SingleBook = () => {
           </div>
         </div>
       </div>
-
       {/* Tabs for Description, Featured Details, and Reviews */}
       <div className="mt-12">
         <div className="flex justify-start space-x-12 border-b border-gray-300">
@@ -235,7 +228,6 @@ const SingleBook = () => {
                   ))}
                 </div>
               </div>
-
               <div>
                 <label htmlFor="reviewText" className="text-xl font-semibold text-gray-700">Review</label>
                 <textarea
@@ -247,7 +239,6 @@ const SingleBook = () => {
                   placeholder="Write your review..."
                 />
               </div>
-
               <button
                 type="submit"
                 className="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 focus:outline-none transition-all duration-200"
@@ -270,11 +261,11 @@ const SingleBook = () => {
                       <button
                         onClick={async () => {
                           try {
-                            await axios.delete(`http://localhost:5000/api/reviews/${review._id}`)
-                            setReviews(reviews.filter(r => r._id !== review._id))
+                            await axios.delete(`http://localhost:5000/api/reviews/${review._id}`);
+                            setReviews(reviews.filter(r => r._id !== review._id));
                           } catch (err) {
-                            console.error("Error deleting review:", err)
-                            alert("Failed to delete review. Please try again.")
+                            console.error("Error deleting review:", err);
+                            alert("Failed to delete review. Please try again.");
                           }
                         }}
                         className="absolute top-2 right-2 text-red-500 hover:text-red-700"
@@ -292,7 +283,7 @@ const SingleBook = () => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default SingleBook;

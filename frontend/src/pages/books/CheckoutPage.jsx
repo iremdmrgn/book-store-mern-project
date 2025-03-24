@@ -8,6 +8,7 @@ import { useCreateOrderMutation } from '../../redux/features/orders/ordersApi';
 import axios from 'axios';
 import { getImgUrl } from '../../utils/getImgUrl';
 import { clearCartAsync } from '../../redux/features/cart/cartSlice';
+import { SiVisa, SiMastercard, SiAmericanexpress, SiDiscover } from 'react-icons/si';
 
 const CheckoutPage = () => {
   const cartItems = useSelector((state) => state.cart.cartItems);
@@ -21,7 +22,7 @@ const CheckoutPage = () => {
     handleSubmit,
     watch,
     getValues,
-    setValue,  // <-- Added setValue from useForm
+    setValue,
     formState: { errors },
     trigger,
   } = useForm();
@@ -76,33 +77,39 @@ const CheckoutPage = () => {
     if (currentUser?.uid) fetchSavedPayments();
   }, [currentUser]);
 
+  // Helper to detect card brand (same as in your Profile page)
+  const detectCardBrand = (number) => {
+    const cleaned = number.replace(/\s+/g, "");
+    if (cleaned.startsWith("4")) return "visa";
+    if (cleaned.startsWith("5")) return "mastercard";
+    if (cleaned.startsWith("34") || cleaned.startsWith("37")) return "amex";
+    if (cleaned.startsWith("9792")) return "troy";
+    if (cleaned.startsWith("6")) return "discover";
+    return null;
+  };
+
   // Watch new address and payment fields
   const watchedAddress = watch(["addressTitle", "address", "city", "state", "zipcode", "country"]);
   const watchedPayment = watch(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
 
   // ---- Personal Information: Pre-fill using Firebase & MongoDB account data ----
-  // We'll create local state for the editable fields.
   const [editableFirstName, setEditableFirstName] = useState("");
   const [editableLastName, setEditableLastName] = useState("");
   const [editableEmail, setEditableEmail] = useState("");
   const [editablePhone, setEditablePhone] = useState("");
 
-  // When currentUser loads, update name and email from Firebase
   useEffect(() => {
     if (currentUser) {
       const parts = currentUser.displayName ? currentUser.displayName.split(" ") : [];
       setEditableFirstName(parts[0] || currentUser.email || "");
       setEditableLastName(parts[1] || "");
       setEditableEmail(currentUser.email || "");
-      // currentUser.phone might not be set (especially for Google sign-in)
     }
   }, [currentUser]);
 
-  // Function to fetch updated account info from MongoDB
   const fetchAccount = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
-      // Update local state with MongoDB account data
       setEditableFirstName(response.data.firstName);
       setEditableLastName(response.data.lastName);
       setEditableEmail(response.data.email);
@@ -119,17 +126,13 @@ const CheckoutPage = () => {
     }
   }, [currentUser]);
 
-  // NEW: Update react-hook-form values when local editable fields change
   useEffect(() => {
     setValue("phone", editablePhone);
     setValue("email", editableEmail);
-    // Optionally, update a "name" field if needed:
     setValue("name", `${editableFirstName} ${editableLastName}`);
   }, [editablePhone, editableEmail, editableFirstName, editableLastName, setValue]);
 
-  // onSubmit remains unchanged (it creates the order)
   const onSubmit = async (data) => {
-    // Determine delivery address
     const deliveryAddress = selectedAddressOption === 'saved' && selectedSavedAddress
       ? {
           address: selectedSavedAddress.street,
@@ -146,7 +149,6 @@ const CheckoutPage = () => {
           country: data.country,
         };
 
-    // Determine payment method
     const paymentMethod = selectedPaymentOption === 'saved' && selectedSavedPayment
       ? {
           cardHolder: selectedSavedPayment.cardHolder,
@@ -160,7 +162,6 @@ const CheckoutPage = () => {
           cvv: data.cvv,
         };
 
-    // Build orderData to match your backend schema.
     const orderData = {
       name: data.name,
       email: data.email,
@@ -215,7 +216,6 @@ const CheckoutPage = () => {
 
   if (isLoading) return <div className="text-center py-8">Processing your order...</div>;
 
-  // Step indicator data
   const steps = [
     { number: 1, title: "Personal Info" },
     { number: 2, title: "Address" },
@@ -223,14 +223,11 @@ const CheckoutPage = () => {
     { number: 4, title: "Review" },
   ];
 
-  // Clickable step indicator handler
   const handleStepClick = async (targetStep) => {
-    // Always allow going back
     if (targetStep < step) {
       setStep(targetStep);
       return;
     }
-    // For going forward, validate the previous step's fields:
     if (targetStep === 2) {
       const valid = await trigger(["name", "phone"]);
       if (valid) setStep(2);
@@ -438,7 +435,6 @@ const CheckoutPage = () => {
   return (
     <section style={{ backgroundColor: 'rgb(250,248,230)' }} className="min-h-screen py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* Combined White Container with reduced width/height and oval edges */}
         <div className="bg-white shadow-md rounded-2xl p-4">
           {/* Step Indicator */}
           <div className="mb-8">
@@ -648,14 +644,15 @@ const CheckoutPage = () => {
                   <div className="mb-6">
                     <p className="font-semibold mb-3">Select one of your saved payment methods:</p>
                     {savedPayments.map(payment => (
-                      <div key={payment._id}
-                           onClick={() => {
-                             setSelectedPaymentOption('saved');
-                             setSelectedSavedPayment(payment);
-                           }}
-                           className={`flex items-center mb-4 p-4 border rounded-lg cursor-pointer transition duration-200 ${
-                             selectedSavedPayment?._id === payment._id ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                           }`}
+                      <div
+                        key={payment._id}
+                        onClick={() => {
+                          setSelectedPaymentOption('saved');
+                          setSelectedSavedPayment(payment);
+                        }}
+                        className={`flex items-center mb-4 p-4 border rounded-lg cursor-pointer transition duration-200 ${
+                          selectedSavedPayment?._id === payment._id ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                        }`}
                       >
                         <input
                           type="radio"
@@ -669,6 +666,25 @@ const CheckoutPage = () => {
                           className="mr-4"
                         />
                         <div>
+                          <div className="flex items-center mb-1">
+                            {detectCardBrand(payment.cardNumber) === "visa" && (
+                              <SiVisa size={46} style={{ color: "#1A1F71" }} className="mr-2" />
+                            )}
+                            {detectCardBrand(payment.cardNumber) === "mastercard" && (
+                              <SiMastercard size={46} style={{ color: "#EB001B" }} className="mr-2" />
+                            )}
+                            {detectCardBrand(payment.cardNumber) === "amex" && (
+                              <SiAmericanexpress size={46} style={{ color: "#2E77BC" }} className="mr-2" />
+                            )}
+                            {detectCardBrand(payment.cardNumber) === "discover" && (
+                              <SiDiscover size={46} style={{ color: "#FF6000" }} className="mr-2" />
+                            )}
+                            {detectCardBrand(payment.cardNumber) === "troy" && (
+                              <span className="mr-2" style={{ fontSize: "46px", fontWeight: "bold", color: "#0085C7" }}>
+                                Troy
+                              </span>
+                            )}
+                          </div>
                           <p className="font-bold text-gray-800">{payment.cardHolder}</p>
                           <p className="text-gray-600 text-sm">**** **** **** {payment.cardNumber.slice(-4)}</p>
                           <p className="text-gray-600 text-sm">Exp: {payment.expiryDate}</p>
@@ -695,12 +711,31 @@ const CheckoutPage = () => {
                   <div className="space-y-4">
                     <div>
                       <label className="block font-medium text-gray-700">Card Number</label>
-                      <input
-                        {...register("cardNumber", { required: "Card number is required" })}
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
-                      />
+                      <div className="mt-2 flex items-center">
+                        <input
+                          {...register("cardNumber", { required: "Card number is required" })}
+                          type="text"
+                          placeholder="1234 5678 9012 3456"
+                          className="w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                        {detectCardBrand(watchedPayment[0] || "") === "visa" && (
+                          <SiVisa size={46} style={{ color: "#1A1F71" }} className="ml-2" />
+                        )}
+                        {detectCardBrand(watchedPayment[0] || "") === "mastercard" && (
+                          <SiMastercard size={46} style={{ color: "#EB001B" }} className="ml-2" />
+                        )}
+                        {detectCardBrand(watchedPayment[0] || "") === "amex" && (
+                          <SiAmericanexpress size={46} style={{ color: "#2E77BC" }} className="ml-2" />
+                        )}
+                        {detectCardBrand(watchedPayment[0] || "") === "discover" && (
+                          <SiDiscover size={46} style={{ color: "#FF6000" }} className="ml-2" />
+                        )}
+                        {detectCardBrand(watchedPayment[0] || "") === "troy" && (
+                          <span className="ml-2" style={{ fontSize: "32px", fontWeight: "bold", color: "#0085C7" }}>
+                            Troy
+                          </span>
+                        )}
+                      </div>
                       {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber.message}</p>}
                     </div>
                     <div>
@@ -709,6 +744,13 @@ const CheckoutPage = () => {
                         {...register("expiryDate", { required: "Expiry date is required" })}
                         type="text"
                         placeholder="MM/YY"
+                        maxLength={5}
+                        onChange={(e) => {
+                          let input = e.target.value.replace(/\D/g, "");
+                          if (input.length > 4) input = input.slice(0, 4);
+                          if (input.length > 2) input = input.slice(0, 2) + "/" + input.slice(2);
+                          setValue("expiryDate", input);
+                        }}
                         className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
                       />
                       {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate.message}</p>}
@@ -716,9 +758,14 @@ const CheckoutPage = () => {
                     <div>
                       <label className="block font-medium text-gray-700">CVV</label>
                       <input
-                        {...register("cvv", { required: "CVV is required" })}
+                        {...register("cvv", { 
+                          required: "CVV is required", 
+                          pattern: { value: /^\d{3}$/, message: "CVV must be 3 digits" } 
+                        })}
                         type="text"
                         placeholder="123"
+                        maxLength={3}
+                        inputMode="numeric"
                         className="mt-2 w-full border rounded-md p-3 focus:ring-blue-600 focus:border-blue-600"
                       />
                       {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv.message}</p>}
@@ -761,37 +808,81 @@ const CheckoutPage = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between mt-4 border-t pt-3">
-                      <span className="font-semibold text-lg">Total:</span>
-                      <span className="text-lg font-bold">${totalPrice}</span>
-                    </div>
                   </div>
 
                   <div>
                     <h3 className="font-semibold text-lg">Delivery Address</h3>
-                    {selectedAddressOption === 'saved' && selectedSavedAddress ? (
-                      <p className="mt-2 text-gray-700">
-                        <span className="font-bold">{selectedSavedAddress.title}</span> - {selectedSavedAddress.street}, {selectedSavedAddress.city}
-                        {selectedSavedAddress.state ? `, ${selectedSavedAddress.state}` : ''}, {selectedSavedAddress.postalCode}, {selectedSavedAddress.country}
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-gray-700">
-                        {watchedAddress[1] || 'Address'}, {watchedAddress[2] || 'City'}, {watchedAddress[3] || 'State'}, {watchedAddress[4] || 'Zipcode'}, {watchedAddress[5] || 'Country'}
-                      </p>
-                    )}
+                    <div className="border p-4 rounded-md mt-2">
+                      {selectedAddressOption === 'saved' && selectedSavedAddress ? (
+                        <p className="text-gray-700">
+                          <span className="font-bold">{selectedSavedAddress.title}</span> - {selectedSavedAddress.street}, {selectedSavedAddress.city}
+                          {selectedSavedAddress.state ? `, ${selectedSavedAddress.state}` : ''}, {selectedSavedAddress.postalCode}, {selectedSavedAddress.country}
+                        </p>
+                      ) : (
+                        <p className="text-gray-700">
+                          {watchedAddress[1] || 'Address'}, {watchedAddress[2] || 'City'}, {watchedAddress[3] || 'State'}, {watchedAddress[4] || 'Zipcode'}, {watchedAddress[5] || 'Country'}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <h3 className="font-semibold text-lg">Payment Method</h3>
-                    {selectedPaymentOption === 'saved' && selectedSavedPayment ? (
-                      <p className="mt-2 text-gray-700">
-                        {selectedSavedPayment.cardHolder} — **** **** **** {selectedSavedPayment.cardNumber.slice(-4)} (Exp: {selectedSavedPayment.expiryDate})
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-gray-700">
-                        Cardholder: {watchedPayment[3] || 'N/A'}, Card: {watchedPayment[0] ? '**** **** **** ' + watchedPayment[0].slice(-4) : 'N/A'}, Exp: {watchedPayment[1] || 'N/A'}
-                      </p>
-                    )}
+                    <div className="border p-4 rounded-md mt-2 flex items-center">
+                      {selectedPaymentOption === 'saved' && selectedSavedPayment ? (
+                        <>
+                          {detectCardBrand(selectedSavedPayment.cardNumber) === "visa" && (
+                            <SiVisa size={46} style={{ color: "#1A1F71" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(selectedSavedPayment.cardNumber) === "mastercard" && (
+                            <SiMastercard size={46} style={{ color: "#EB001B" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(selectedSavedPayment.cardNumber) === "amex" && (
+                            <SiAmericanexpress size={46} style={{ color: "#2E77BC" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(selectedSavedPayment.cardNumber) === "discover" && (
+                            <SiDiscover size={46} style={{ color: "#FF6000" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(selectedSavedPayment.cardNumber) === "troy" && (
+                            <span className="mr-2" style={{ fontSize: "32px", fontWeight: "bold", color: "#0085C7" }}>
+                              Troy
+                            </span>
+                          )}
+                          <p className="text-gray-700">
+                            {selectedSavedPayment.cardHolder} — **** **** **** {selectedSavedPayment.cardNumber.slice(-4)} (Exp: {selectedSavedPayment.expiryDate})
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          {detectCardBrand(watchedPayment[0] || "") === "visa" && (
+                            <SiVisa size={32} style={{ color: "#1A1F71" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(watchedPayment[0] || "") === "mastercard" && (
+                            <SiMastercard size={32} style={{ color: "#EB001B" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(watchedPayment[0] || "") === "amex" && (
+                            <SiAmericanexpress size={32} style={{ color: "#2E77BC" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(watchedPayment[0] || "") === "discover" && (
+                            <SiDiscover size={32} style={{ color: "#FF6000" }} className="mr-2" />
+                          )}
+                          {detectCardBrand(watchedPayment[0] || "") === "troy" && (
+                            <span className="mr-2" style={{ fontSize: "32px", fontWeight: "bold", color: "#0085C7" }}>
+                              Troy
+                            </span>
+                          )}
+                          <p className="text-gray-700">
+                            Cardholder: {watchedPayment[3] || 'N/A'}, Card: {watchedPayment[0] ? '**** **** **** ' + watchedPayment[0].slice(-4) : 'N/A'}, Exp: {watchedPayment[1] || 'N/A'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* New Total block at the end */}
+                  <div className="border-t pt-3 mt-6 flex justify-end">
+                    <span className="font-semibold text-lg mr-2">Total:</span>
+                    <span className="text-lg font-bold">${totalPrice}</span>
                   </div>
                 </div>
               </div>
@@ -820,7 +911,7 @@ const CheckoutPage = () => {
               {step === 4 && (
                 <button
                   type="submit"
-                  className="ml-auto px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors"
                 >
                   Confirm Order
                 </button>

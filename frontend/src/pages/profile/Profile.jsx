@@ -660,7 +660,7 @@ const Profile = () => {
       </h2>
 
       <div className="flex items-center mt-4">
-        <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-black text-xl font-semibold">
+        <div className="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center text-black text-xl font-semibold">
           {firstNameDisplay[0]}
           {lastNameDisplay[0]}
         </div>
@@ -673,7 +673,7 @@ const Profile = () => {
 
       <div className="mt-6 flex space-x-6">
         {/* Sidebar Tabs */}
-        <div className="flex flex-col w-1/4 space-y-4">
+        <div className="flex flex-col w-1/5 space-y-4">
           {[
             { key: "userInfo", label: "User Information", icon: "fas fa-user" },
             { key: "orders", label: "Orders", icon: "fas fa-box" },
@@ -700,7 +700,7 @@ const Profile = () => {
           ))}
           <button
             onClick={handleLogout}
-            className="px-6 py-3 text-lg font-semibold bg-gray-500 text-black rounded-md w-full mt-6 transition-colors duration-300 ease-in-out hover:bg-gray-700 shadow-lg"
+            className="px-6 py-3 text-lg font-semibold bg-gray-400 text-black rounded-md w-full mt-6 transition-colors duration-300 ease-in-out hover:bg-gray-700 shadow-lg"
           >
             Log Out
           </button>
