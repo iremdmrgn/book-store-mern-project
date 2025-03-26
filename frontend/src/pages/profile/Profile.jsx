@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useGetOrderByEmailQuery } from "../../redux/features/orders/ordersApi";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getImgUrl } from "../../utils/getImgUrl";
 import axios from "axios";
@@ -25,7 +25,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Read the tab key from the URL and update state
   const [selectedTab, setSelectedTab] = useState("userInfo");
   useEffect(() => {
     const pathParts = location.pathname.split("/");
@@ -33,7 +32,6 @@ const Profile = () => {
     setSelectedTab(tab);
   }, [location.pathname]);
 
-  // Update URL when changing tabs
   const handleTabChange = (key) => {
     navigate(`/profile/${key}`);
   };
@@ -59,7 +57,6 @@ const Profile = () => {
   // State for detected card brand
   const [cardBrand, setCardBrand] = useState(null);
 
-  // Auto-format expiry date (insert "/" after two digits)
   const handleExpiryDateChange = (e) => {
     let input = e.target.value.replace(/\D/g, "");
     if (input.length > 4) input = input.slice(0, 4);
@@ -69,14 +66,12 @@ const Profile = () => {
     setExpiryDate(input);
   };
 
-  // Allow only 3 numeric digits for CVV
   const handleCvvChange = (e) => {
     let input = e.target.value.replace(/\D/g, "");
     if (input.length > 3) input = input.slice(0, 3);
     setCvv(input);
   };
 
-  // Detect card brand based on card number (including Troy detection)
   const detectCardBrand = (number) => {
     const cleaned = number.replace(/\s+/g, "");
     if (cleaned.startsWith("4")) return "visa";
@@ -87,7 +82,6 @@ const Profile = () => {
     return null;
   };
 
-  // Update card number and detect brand
   const handleCardNumberChange = (e) => {
     const value = e.target.value;
     setCardNumber(value);
@@ -95,7 +89,7 @@ const Profile = () => {
     setCardBrand(brand);
   };
 
-  // Reviews state (for the Reviews tab)
+  // Reviews state
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
@@ -108,7 +102,6 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  // User information for display
   const userName = currentUser?.displayName ? currentUser.displayName.split(" ") : [];
   const firstNameDisplay = userName[0] || currentUser?.email || "";
   const lastNameDisplay = userName[1] || "";
@@ -129,7 +122,6 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  // Fetch updated account info from MongoDB
   const fetchAccount = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
@@ -149,7 +141,6 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  // Update user information with reauthentication
   const handleUpdateUser = async () => {
     try {
       if (currentUser.providerData[0]?.providerId === "google.com") {
@@ -378,7 +369,6 @@ const Profile = () => {
     }
   }, [selectedTab, currentUser]);
 
-  // Helper functions for validating payment inputs
   const validateCardNumber = (number) => {
     const cleaned = number.replace(/\s+/g, '');
     if (!/^\d{13,19}$/.test(cleaned)) return false;
@@ -551,7 +541,7 @@ const Profile = () => {
         itemsHtml += `
           <div style="display: flex; align-items: center; margin-bottom: 8px;">
             <img src="${
-              item.coverImage ? getImgUrl(item.coverImage).href : '/default-image.jpg'
+              item.coverImage ? getImgUrl(item.coverImage) : '/default-image.jpg'
             }" alt="${item.title}" style="width:50px; height:70px; object-fit:cover; margin-right:10px; border-radius:4px;" />
             <div>
               <p style="margin:0; font-weight:bold;">${item.title}</p>
@@ -616,7 +606,6 @@ const Profile = () => {
     }
   };
 
-  // Fetch reviews for the user. If a review does not have a coverImage, fetch the book data.
   const fetchUserReviews = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/reviews/user/${currentUser.uid}`);
@@ -654,7 +643,6 @@ const Profile = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* Apply Lobster font */}
       <h2 style={{ fontFamily: "Lobster, cursive" }} className="text-4xl font-bold text-black">
         Welcome,
       </h2>
@@ -672,7 +660,6 @@ const Profile = () => {
       </div>
 
       <div className="mt-6 flex space-x-6">
-        {/* Sidebar Tabs */}
         <div className="flex flex-col w-1/5 space-y-4">
           {[
             { key: "userInfo", label: "User Information", icon: "fas fa-user" },
@@ -707,7 +694,6 @@ const Profile = () => {
         </div>
 
         <div className="w-3/4">
-          {/* Payment Methods Tab */}
           {selectedTab === "payment" && (
             <div className="p-8 bg-white shadow-xl rounded-xl w-full max-w-2xl">
               <div className="flex items-center justify-between mb-6">
@@ -772,20 +758,19 @@ const Profile = () => {
                             </div>
                           </div>
                           <div className="mt-2 flex justify-end space-x-4">
-  <button
-    onClick={() => handleUpdatePayment(payment._id)}
-    className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
-  >
-    Save
-  </button>
-  <button
-    onClick={cancelEditPayment}
-    className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
-  >
-    Cancel
-  </button>
-</div>
-
+                            <button
+                              onClick={() => handleUpdatePayment(payment._id)}
+                              className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditPayment}
+                              className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="relative">
@@ -799,7 +784,6 @@ const Profile = () => {
                               <FaEdit size={24} />
                             </button>
                           </div>
-                          {/* Display bank logo for saved card */}
                           <div className="flex items-center mb-2">
                             {detectCardBrand(payment.cardNumber) === "visa" && (
                               <SiVisa size={46} style={{ color: "#1A1F71" }} className="mr-2" />
@@ -820,9 +804,8 @@ const Profile = () => {
                             )}
                           </div>
                           <p className="font-semibold text-black text-lg">Cardholder: {payment.cardHolder}</p>
-<p className="text-black">Card Number: **** **** **** {payment.cardNumber.slice(-4)}</p>
-<p className="text-black">Expiry Date: {payment.expiryDate}</p>
-
+                          <p className="text-black">Card Number: **** **** **** {payment.cardNumber.slice(-4)}</p>
+                          <p className="text-black">Expiry Date: {payment.expiryDate}</p>
                         </div>
                       )}
                     </div>
@@ -832,7 +815,6 @@ const Profile = () => {
             </div>
           )}
 
-          {/* Add Payment Tab */}
           {selectedTab === "addPayment" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
@@ -909,19 +891,17 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex justify-end">
-  <button
-    onClick={handleAddPayment}
-    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
-  >
-    Save Payment Method
-  </button>
-</div>
-
+                  <button
+                    onClick={handleAddPayment}
+                    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
+                  >
+                    Save Payment Method
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Orders Tab */}
           {selectedTab === "orders" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
@@ -937,7 +917,7 @@ const Profile = () => {
                   >
                     {order.items && order.items.length > 0 && (
                       <img
-                        src={order.items[0].coverImage ? getImgUrl(order.items[0].coverImage).href : "/default-image.jpg"}
+                        src={order.items[0].coverImage ? getImgUrl(order.items[0].coverImage) : "/default-image.jpg"}
                         alt="Book cover"
                         className="w-20 h-20 object-cover rounded shadow"
                       />
@@ -958,7 +938,6 @@ const Profile = () => {
             </div>
           )}
 
-          {/* User Information Tab */}
           {selectedTab === "userInfo" && (
             <div className="p-6 border rounded-2xl bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
@@ -1003,19 +982,17 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex justify-end">
-  <button
-    onClick={handleUpdateUser}
-    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
-  >
-    Update Information
-  </button>
-</div>
-
+                  <button
+                    onClick={handleUpdateUser}
+                    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
+                  >
+                    Update Information
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Addresses Tab */}
           {selectedTab === "address" && (
             <div className="p-8 bg-white shadow-xl rounded-xl w-full max-w-2xl">
               <div className="flex items-center justify-between mb-6">
@@ -1068,20 +1045,19 @@ const Profile = () => {
                             </div>
                           </div>
                           <div className="mt-4 flex justify-end space-x-4">
-  <button
-    onClick={() => handleUpdateAddress(address._id)}
-    className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg transition"
-  >
-    Save
-  </button>
-  <button
-    onClick={cancelEditAddress}
-    className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
-  >
-    Cancel
-  </button>
-</div>
-
+                            <button
+                              onClick={() => handleUpdateAddress(address._id)}
+                              className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg transition"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditAddress}
+                              className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex-1">
@@ -1110,7 +1086,7 @@ const Profile = () => {
 
           {selectedTab === "addAddress" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
-              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-mb-4">
+              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
                 Add New Address
               </h3>
               <div className="grid gap-4">
@@ -1178,19 +1154,17 @@ const Profile = () => {
                   />
                 </div>
                 <div className="flex justify-end">
-  <button
-    onClick={handleAddAddress}
-    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
-  >
-    Save Address
-  </button>
-</div>
-
+                  <button
+                    onClick={handleAddAddress}
+                    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
+                  >
+                    Save Address
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Reviews Tab */}
           {selectedTab === "reviews" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
@@ -1201,7 +1175,7 @@ const Profile = () => {
                   reviews.map((review, index) => (
                     <div key={index} className="p-4 border border-gray-200 rounded-lg shadow-sm flex items-start">
                       <img
-                        src={review.coverImage ? getImgUrl(review.coverImage).href : "/default-image.jpg"}
+                        src={review.coverImage ? getImgUrl(review.coverImage) : "/default-image.jpg"}
                         alt={review.bookTitle ? review.bookTitle : "Review"}
                         className="w-16 h-16 object-cover rounded-md mr-4"
                       />

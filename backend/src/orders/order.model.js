@@ -4,36 +4,34 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true, // Sipariş sahibinin adı
+    required: true, // Customer's name
   },
   email: {
     type: String,
-    required: true, // Sipariş sahibinin e-posta adresi
+    required: true, // Customer's email address
   },
   address: {
     city: {
       type: String,
-      required: true, // Şehir adı
+      required: true, // City name
     },
     country: {
       type: String,
-      default: "", // Ülke (isteğe bağlı)
+      default: "", // Country (optional)
     },
     state: {
       type: String,
-      default: "", // Eyalet (isteğe bağlı)
+      default: "", // State (optional)
     },
     zipcode: {
       type: String,
-      default: "", // Posta kodu (isteğe bağlı)
+      default: "", // Zip code (optional)
     },
   },
   phone: {
-    type: Number,
-    required: true, // Sipariş verenin telefon numarası
+    type: String, // Changed to String to better handle phone numbers
+    required: true, // Customer's phone number
   },
-  // Siparişe ait ürün bilgilerini saklamak için "items" alanı oluşturabilirsiniz.
-  // Burada her ürün için, kitap ID'si, fiyatı ve miktarı gibi bilgiler yer alabilir.
   items: [
     {
       productId: {
@@ -45,7 +43,9 @@ const orderSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
-      coverImage: String,
+      coverImage: {
+        type: String,
+      },
       price: {
         type: Number,
         required: true,
@@ -58,7 +58,7 @@ const orderSchema = new mongoose.Schema({
   ],
   totalPrice: {
     type: Number,
-    required: true, // Siparişin toplam fiyatı
+    required: true, // Total price of the order
   },
   orderNumber: {
     type: String,
@@ -66,17 +66,30 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    default: "Pending", // Sipariş durumu; gerekirse frontend'de bu alanı gizleyebilirsiniz.
+    default: "Pending", // Order status
+  },
+  // New optional fields for payment and shipping
+  paymentMethod: {
+    type: String,
+    default: "Cash on Delivery", // Payment method
+  },
+  paymentStatus: {
+    type: String,
+    default: "Unpaid", // Payment status
+  },
+  shippingCost: {
+    type: Number,
+    default: 0, // Shipping cost (if applicable)
   }
 }, {
-  timestamps: true, // Siparişin oluşturulma ve güncellenme tarihleri
+  timestamps: true, // Automatically add createdAt and updatedAt fields
 });
 
-// Pre-save hook: Eğer orderNumber tanımlı değilse, otomatik oluştur.
+// Pre-save hook: Generate an order number if not already defined
 orderSchema.pre('save', function(next) {
   if (!this.orderNumber) {
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomPart = Math.floor(Math.random() * 9000) + 1000; // 4 basamaklı rastgele sayı
+    const randomPart = Math.floor(Math.random() * 9000) + 1000; // 4-digit random number
     this.orderNumber = `ORD-${datePart}-${randomPart}`;
   }
   next();

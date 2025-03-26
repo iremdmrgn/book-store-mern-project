@@ -83,7 +83,7 @@ const AddBook = () => {
   };
 
   return (
-    <div className="p-6 bg-white shadow rounded">
+    <div className="max-w-5xl mx-auto p-6 bg-white shadow rounded">
       <h2 className="text-2xl font-bold mb-4">Add New Book</h2>
       <form onSubmit={handleSubmit}>
         {/* Title */}
@@ -273,9 +273,12 @@ const AddBook = () => {
             </div>
           )}
         </div>
-        <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded">
-          Add Book
-        </button>
+        <div className="flex justify-end">
+  <button type="submit" className="bg-green-500 text-white px-6 py-2 rounded">
+    Add Book
+  </button>
+</div>
+
       </form>
     </div>
   );

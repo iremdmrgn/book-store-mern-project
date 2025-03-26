@@ -29,7 +29,12 @@ const bookSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  // Eklenen alanlar:
+  stock: {
+    type: Number,
+    required: true,
+    default: 100, // Varsayılan stok değeri 100
+  },
+  // Ek alanlar:
   author: {
     type: String,
     default: 'Unknown'

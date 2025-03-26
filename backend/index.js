@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const mongoose = require("mongoose");
-const path = require('path');
+const path = require("path");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
@@ -11,14 +11,14 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://book-app-frontend-tau.vercel.app",
+      "https://book-app-frontend-tau.vercel.app"
     ],
     credentials: true,
   })
 );
 
-// Statik dosyaların sunulması için "public" klasörünü tanımlıyoruz.
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from the "public" folder.
+app.use(express.static(path.join(__dirname, "public")));
 
 // Import routes
 const bookRoutes = require("./src/books/book.route");
@@ -32,7 +32,7 @@ const addressRoutes = require("./src/address/addressRoutes.js");
 const paymentMethodRoutes = require("./src/PaymentMethod/PaymentMethod.route.js");
 const accountRoutes = require("./src/account/account.routes");
 
-// Dashboard route'larını ekleyelim
+// Dashboard routes (including best-selling-books endpoint)
 const dashboardRoutes = require("./src/dashboard/dashboardRoutes");
 
 // Mount routes
@@ -53,7 +53,7 @@ app.use("/", (req, res) => {
   res.json({ message: "Book Store Server is running!" });
 });
 
-// MongoDB bağlantısı
+// Connect to MongoDB
 mongoose
   .connect(process.env.DB_URL)
   .then(() => console.log("Mongodb connected successfully!"))

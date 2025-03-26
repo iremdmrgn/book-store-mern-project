@@ -1,15 +1,18 @@
 const Order = require("./order.model");
+const Book = require("../books/book.model"); // Adjust the path as needed
 
-// Yeni sipariş oluşturma fonksiyonu
 const createAOrder = async (req, res) => {
   try {
-    // req.body, order detaylarını (name, email, address, phone, items, totalPrice, vs.) içermelidir.
+    // Create a new order using the details provided in req.body
     const newOrder = new Order(req.body);
-
-    // Siparişi veritabanına kaydediyoruz
     const savedOrder = await newOrder.save();
 
-    // Başarılı olursa kaydedilen siparişi geri gönderiyoruz
+    // For each ordered item, update the corresponding book's stock
+    for (const item of savedOrder.items) {
+      // Use the $inc operator to decrease stock by item.quantity
+      await Book.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } });
+    }
+
     res.status(200).json(savedOrder);
   } catch (error) {
     console.error("Error creating order", error);
@@ -17,15 +20,14 @@ const createAOrder = async (req, res) => {
   }
 };
 
-// Email'e göre siparişleri getirme fonksiyonu
 const getOrderByEmail = async (req, res) => {
   try {
-    const { email } = req.params; // Kullanıcıya ait e-posta alınıyor
-    // Siparişleri email'e göre buluyor, sıralıyor ve items.productId alanını populate ediyoruz
+    const { email } = req.params;
+    // Find orders by email, sort by creation date (descending) and populate product details
     const orders = await Order.find({ email })
       .sort({ createdAt: -1 })
       .populate('items.productId');
-    
+
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No orders found for this email" });
     }

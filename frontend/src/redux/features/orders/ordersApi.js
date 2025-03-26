@@ -1,34 +1,42 @@
+// ordersApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import getBaseUrl from "../../../utils/baseURL"; // baseURL fonksiyonunuza ulaşım
+import getBaseUrl from "../../../utils/baseURL";
+// Import booksApi to invalidate its tags
+import booksApi from "../books/booksApi";
 
 const ordersApi = createApi({
   reducerPath: 'ordersApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: `${getBaseUrl()}/api/orders`, // Base URL dinamik şekilde alınıyor
-    credentials: 'include', // Çerezlerin her istekle gönderilmesini sağlar
+    baseUrl: `${getBaseUrl()}/api/orders`,
+    credentials: 'include',
   }),
-  tagTypes: ['Orders'], // API'den gelen veriyi etiketlemek için kullanılır
+  tagTypes: ['Orders'],
   endpoints: (builder) => ({
-    // Sipariş oluşturma endpoint'i
     createOrder: builder.mutation({
       query: (newOrder) => ({
-        url: "/", // POST istek yolu
-        method: "POST", // HTTP methodu
-        body: newOrder, // Yeni sipariş verisi
-        credentials: 'include', // Çerezlerin istekle birlikte gönderilmesi
+        url: "/",
+        method: "POST",
+        body: newOrder,
+        credentials: 'include',
       }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          // Invalidate Books cache so that any query using the "Books" tag will re-fetch updated data
+          dispatch(booksApi.util.invalidateTags(["Books"]));
+        } catch (error) {
+          // Handle error if needed
+        }
+      }
     }),
-
-    // Kullanıcıya ait siparişleri email ile getirme endpoint'i
     getOrderByEmail: builder.query({
       query: (email) => ({
-        url: `/email/${email}`, // Kullanıcı email'ine göre siparişleri getiren URL
+        url: `/email/${email}`,
       }),
-      providesTags: ['Orders'], // Bu sorgu ile elde edilen veriler "Orders" etiketi ile etiketlenir
+      providesTags: ['Orders'],
     }),
   }),
 });
 
-export const { useCreateOrderMutation, useGetOrderByEmailQuery } = ordersApi; // Mutasyon ve query hook'larını dışa aktarma
-
+export const { useCreateOrderMutation, useGetOrderByEmailQuery } = ordersApi;
 export default ordersApi;

@@ -8,12 +8,15 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const RevenueChart = ({ labels, dataValues }) => {
+  // dataValues içindeki her değeri yuvarlayarak kullanıyoruz:
+  const roundedDataValues = dataValues.map(value => Math.round(value));
+
   const data = {
     labels: labels,
     datasets: [
       {
         label: 'Revenue (USD)',
-        data: dataValues,
+        data: roundedDataValues,
         backgroundColor: 'rgba(34, 197, 94, 0.7)',
         borderColor: 'rgba(34, 197, 94, 1)',
         borderWidth: 1,
@@ -28,7 +31,13 @@ const RevenueChart = ({ labels, dataValues }) => {
       title: { display: true, text: 'Monthly Revenue' },
     },
     scales: {
-      y: { beginAtZero: true },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          // Y ekseninde de yuvarlanmış değerler gösterelim.
+          callback: (value) => Math.round(value),
+        },
+      },
     },
   };
 
