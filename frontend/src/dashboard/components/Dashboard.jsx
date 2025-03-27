@@ -3,7 +3,7 @@ import { getDashboardData } from '/src/redux/features/dashboard/dashboardApi';
 import RevenueChart from './RevenueChart';
 import BestSellingBooksChart from './BestSellingBooksChart';
 import Loading from '../../components/Loading';
-import OrderNotification from './OrderNotification';
+import NotificationDropdown from './NotificationDropdown';
 import axios from 'axios';
 
 const Dashboard = () => {
@@ -18,76 +18,55 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Genel dashboard verilerini çekiyoruz
+  // Dashboard verilerini çekiyoruz
   useEffect(() => {
     const fetchData = async () => {
       try {
         const dashboardData = await getDashboardData();
         setData(prev => ({ ...prev, ...dashboardData }));
       } catch (error) {
-        console.error("Dashboard data fetching error:", error);
         setError(error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  // Best selling kitap verilerini backend'den çekiyoruz
   useEffect(() => {
     const fetchBestSellingBooks = async () => {
       try {
         const res = await axios.get('http://localhost:5000/api/dashboard/best-selling-books');
         setData(prev => ({ ...prev, bestSellingBooks: res.data }));
       } catch (error) {
-        console.error("Best selling books fetching error:", error);
+        console.error(error);
       }
     };
-
     fetchBestSellingBooks();
   }, []);
 
-  // Best selling kitap başlıklarını order verisinden direkt alıyoruz
   useEffect(() => {
     const fetchBookTitles = async () => {
       if (!data.bestSellingBooks || data.bestSellingBooks.length === 0) return;
-      const promises = data.bestSellingBooks.map(async (item) => {
-        // Eğer aggregation sonucu içinde title varsa, direkt kullan.
-        if (item.title) {
-          return item.title;
-        }
-        // Fallback: "Bilinmeyen Kitap"
-        return "Bilinmeyen Kitap";
-      });
-      const titles = await Promise.all(promises);
+      const titles = await Promise.all(data.bestSellingBooks.map(item => item.title || "Bilinmeyen Kitap"));
       setBestSellingLabels(titles);
     };
-
     fetchBookTitles();
   }, [data.bestSellingBooks]);
 
   if (loading) return <Loading />;
   if (error) return <div>Error loading dashboard data.</div>;
 
-  const revenueLabels = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
+  const revenueLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const revenueValues = new Array(12).fill(0);
-  data.revenueData.forEach(item => {
-    const monthIndex = item._id - 1;
-    revenueValues[monthIndex] = Math.round(item.totalRevenue);
-  });
-
-  const bestSellingValues = (data.bestSellingBooks || []).map(item =>
-    Math.round(parseFloat(item.totalSold))
-  );
+  data.revenueData.forEach(item => { revenueValues[item._id - 1] = Math.round(item.totalRevenue); });
+  const bestSellingValues = (data.bestSellingBooks || []).map(item => Math.round(parseFloat(item.totalSold)));
 
   return (
     <div>
-      <OrderNotification />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem' }}>
+        <NotificationDropdown />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold">Total Orders</h2>

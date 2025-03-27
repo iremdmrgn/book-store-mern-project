@@ -24,14 +24,13 @@ app.use(express.static(path.join(__dirname, "public")));
 const bookRoutes = require("./src/books/book.route");
 const orderRoutes = require("./src/orders/order.route");
 const userRoutes = require("./src/users/user.route");
-const adminRoutes = require("./src/stats/admin.stats");
+const adminRoutes = require("./src/stats/admin.stats"); // Admin rotalarımız burada
 const cartRoutes = require("./src/cart/cartRoutes");
 const favoritesRoutes = require("./src/favorites/favorites.route");
 const reviewRoutes = require("./src/reviews/review.Routes.js");
 const addressRoutes = require("./src/address/addressRoutes.js");
 const paymentMethodRoutes = require("./src/PaymentMethod/PaymentMethod.route.js");
 const accountRoutes = require("./src/account/account.routes");
-
 // Dashboard routes (including best-selling-books endpoint)
 const dashboardRoutes = require("./src/dashboard/dashboardRoutes");
 

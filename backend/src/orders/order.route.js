@@ -1,15 +1,18 @@
-const express = require('express');
-const { createAOrder, getOrderByEmail } = require('./order.controller');
+const express = require("express");
+const { 
+  createAOrder, 
+  getOrderByEmail, 
+  getOrderCount, 
+  getRecentOrders, 
+  getAllOrders 
+} = require("./order.controller");
 
 const router = express.Router();
 
-// Sipariş oluşturma endpoint'i
 router.post("/", createAOrder);
-
-// Kullanıcı email'ine göre siparişleri getirme endpoint'i
 router.get("/email/:email", getOrderByEmail);
+router.get("/count", getOrderCount);
+router.get("/recent", getRecentOrders);
+router.get("/", getAllOrders);
 
-// Diğer gerekli endpoint'ler burada tanımlanabilir (örneğin, sipariş güncelleme veya silme)
-
-// Modülü dışarıya aktarıyoruz
 module.exports = router;

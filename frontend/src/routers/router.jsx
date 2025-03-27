@@ -7,7 +7,6 @@ import CartPage from "../pages/books/CartPage";
 import CheckoutPage from "../pages/books/CheckoutPage";
 import SingleBook from "../pages/books/SingleBook";
 import PrivateRoute from "./PrivateRoute";
-import OrderPage from "../pages/books/OrderPage";
 import Profile from "../pages/profile/Profile";
 import AdminRoute from "./AdminRoute";
 import AdminLogin from "../components/AdminLogin";
@@ -15,7 +14,7 @@ import DashboardLayout from "../dashboard/components/DashboardLayout";
 import Dashboard from "../dashboard/components/Dashboard";
 import ManageBooks from "../dashboard/components/ManageBooks";
 import AddBook from "../dashboard/components/AddBook";
-// UserDashboard import kaldırıldı
+import OrderPage from "../dashboard/components/OrdersPage"; // Yeni sipariş yönetim sayfası
 import FavoritesPage from "../pages/favorites/FavoritesPage";
 import SearchPage from "../pages/SearchPage";
 
@@ -33,7 +32,6 @@ const router = createBrowserRouter([
       { path: "/checkout", element: <PrivateRoute><CheckoutPage /></PrivateRoute> },
       { path: "/book/:id", element: <SingleBook /> },
       { path: "/profile/*", element: <PrivateRoute><Profile /></PrivateRoute> },
-      // Kullanıcı dashboard rotası kaldırıldı
       { path: "/favorites", element: <PrivateRoute><FavoritesPage /></PrivateRoute> },
       { path: "/search", element: <SearchPage /> },
     ]
@@ -47,6 +45,7 @@ const router = createBrowserRouter([
     element: <AdminRoute><DashboardLayout /></AdminRoute>,
     children: [
       { path: "", element: <AdminRoute><Dashboard /></AdminRoute> },
+      { path: "orders", element: <AdminRoute><OrderPage /></AdminRoute> },  // Yeni sipariş yönetim sayfası
       { path: "add-new-book", element: <AdminRoute><AddBook /></AdminRoute> },
       { path: "manage-books", element: <AdminRoute><ManageBooks /></AdminRoute> }
     ]

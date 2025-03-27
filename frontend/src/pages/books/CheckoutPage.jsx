@@ -77,7 +77,7 @@ const CheckoutPage = () => {
     if (currentUser?.uid) fetchSavedPayments();
   }, [currentUser]);
 
-  // Helper to detect card brand (same as in your Profile page)
+  // Helper to detect card brand
   const detectCardBrand = (number) => {
     const cleaned = number.replace(/\s+/g, "");
     if (cleaned.startsWith("4")) return "visa";
@@ -92,7 +92,7 @@ const CheckoutPage = () => {
   const watchedAddress = watch(["addressTitle", "address", "city", "state", "zipcode", "country"]);
   const watchedPayment = watch(["cardNumber", "expiryDate", "cvv", "cardHolder"]);
 
-  // ---- Personal Information: Pre-fill using Firebase & MongoDB account data ----
+  // ---- Personal Information ----
   const [editableFirstName, setEditableFirstName] = useState("");
   const [editableLastName, setEditableLastName] = useState("");
   const [editableEmail, setEditableEmail] = useState("");
@@ -173,14 +173,16 @@ const CheckoutPage = () => {
       },
       phone: Number(data.phone),
       items: cartItems.map((item) => ({
-        productId: item._id,
+        productId: item.productId,
         title: item.title,
         coverImage: item.coverImage,
         price: item.newPrice,
-        quantity: item.quantity,
+        quantity: Number(item.quantity)
       })),
       totalPrice: Number(totalPrice),
     };
+
+    console.log("Order Data:", orderData);
 
     try {
       await createOrder(orderData).unwrap();
@@ -798,7 +800,7 @@ const CheckoutPage = () => {
                       {cartItems.map(item => (
                         <div key={item._id} className="flex justify-between items-center border-b pb-2">
                           <div className="flex items-center space-x-4">
-                            <img src={getImgUrl(item.coverImage).href} alt={item.title} className="w-16 h-20 object-cover rounded" />
+                            <img src={getImgUrl(item.coverImage)} alt={item.title} className="w-16 h-20 object-cover rounded" />
                             <div>
                               <p className="font-medium">{item.title}</p>
                               <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
@@ -879,7 +881,7 @@ const CheckoutPage = () => {
                     </div>
                   </div>
                   
-                  {/* New Total block at the end */}
+                  {/* Total */}
                   <div className="border-t pt-3 mt-6 flex justify-end">
                     <span className="font-semibold text-lg mr-2">Total:</span>
                     <span className="text-lg font-bold">${totalPrice}</span>

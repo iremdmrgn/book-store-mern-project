@@ -16,18 +16,14 @@ router.get('/best-selling-books', async (req, res) => {
           createdAt: { $gte: startOfMonthUTC, $lte: endOfMonthUTC }
         }
       },
-      {
-        $unwind: "$items"
-      },
+      { $unwind: "$items" },
       {
         $group: {
           _id: "$items.productId",
           totalSold: { $sum: "$items.quantity" }
         }
       },
-      { $sort: { totalSold: -1 } },
-      { $limit: 5 },
-      // Eğer productId alanı string ise, bunu ObjectId'ye dönüştürelim:
+      // Eğer productId zaten ObjectId tipindeyse bu aşamaya gerek yoktur.
       {
         $addFields: {
           productObjId: { $toObjectId: "$_id" }
@@ -40,8 +36,24 @@ router.get('/best-selling-books', async (req, res) => {
           foreignField: "_id",
           as: "bookDetails"
         }
-      }
+      },
+      { $unwind: "$bookDetails" },
+      // İhtiyacınız olan alanları belirleyin; örneğin kitap başlığı, kapak resmi vb.
+      {
+        $project: {
+          _id: 0,
+          productId: "$_id",
+          totalSold: 1,
+          title: "$bookDetails.title",
+          coverImage: "$bookDetails.coverImage"
+          // İhtiyacınıza göre başka alanlar da ekleyebilirsiniz.
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 }
     ]);
+    
+    
 
     res.json(bestSellingBooks);
   } catch (error) {
