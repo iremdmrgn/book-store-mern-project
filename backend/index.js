@@ -3,9 +3,12 @@ const app = express();
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
+const http = require("http");
+const socketIo = require("socket.io");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
+// Middlewares
 app.use(express.json());
 app.use(
   cors({
@@ -22,16 +25,15 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Import routes
 const bookRoutes = require("./src/books/book.route");
-const orderRoutes = require("./src/orders/order.route");
+const orderRoutes = require("./src/orders/order.route"); // Updated order routes
 const userRoutes = require("./src/users/user.route");
-const adminRoutes = require("./src/stats/admin.stats"); // Admin rotalarımız burada
+const adminRoutes = require("./src/stats/admin.stats");
 const cartRoutes = require("./src/cart/cartRoutes");
 const favoritesRoutes = require("./src/favorites/favorites.route");
 const reviewRoutes = require("./src/reviews/review.Routes.js");
 const addressRoutes = require("./src/address/addressRoutes.js");
 const paymentMethodRoutes = require("./src/PaymentMethod/PaymentMethod.route.js");
 const accountRoutes = require("./src/account/account.routes");
-// Dashboard routes (including best-selling-books endpoint)
 const dashboardRoutes = require("./src/dashboard/dashboardRoutes");
 
 // Mount routes
@@ -58,6 +60,31 @@ mongoose
   .then(() => console.log("Mongodb connected successfully!"))
   .catch((err) => console.log(err));
 
-app.listen(port, () => {
+// Create HTTP server and integrate Socket.io
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "https://book-app-frontend-tau.vercel.app"
+    ],
+    credentials: true,
+  }
+});
+
+// Store the io instance in the Express app for access in controllers
+app.set("socketio", io);
+
+// Socket.io connection event
+io.on("connection", (socket) => {
+  console.log("New client connected: " + socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected: " + socket.id);
+  });
+});
+
+// Start the server
+server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });

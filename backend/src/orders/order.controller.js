@@ -26,6 +26,28 @@ const createAOrder = async (req, res) => {
   }
 };
 
+// New update endpoint for order status
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const updatedOrder = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    console.log("Order status updated:", updatedOrder);
+
+    // Emit socket event for real-time update
+    const io = req.app.get("socketio");
+    if (io) {
+      io.emit("orderUpdated", updatedOrder);
+      console.log("Socket event 'orderUpdated' emitted");
+    }
+
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    console.error("Error updating order status", error);
+    res.status(500).json({ message: "Failed to update order status" });
+  }
+};
+
 const getOrderByEmail = async (req, res) => {
   try {
     const { email } = req.params;
@@ -74,6 +96,7 @@ const getAllOrders = async (req, res) => {
 
 module.exports = {
   createAOrder,
+  updateOrderStatus, // new endpoint added here
   getOrderByEmail,
   getOrderCount,
   getRecentOrders,

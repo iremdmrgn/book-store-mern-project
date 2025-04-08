@@ -13,12 +13,13 @@ const ManageBooks = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // States for search, category filter, and sorting order
+  // States for search, category filter, and sorting orders
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'asc' or 'desc'
+  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'asc' veya 'desc' (fiyat sıralaması)
+  const [stockSortOrder, setStockSortOrder] = useState('default'); // 'default', 'asc' veya 'desc' (stok sıralaması)
 
-  // Modal and editing book state (added "stock" field)
+  // Modal ve düzenleme işlemleri için state (stok alanı eklendi)
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [editingBookId, setEditingBookId] = useState(null);
   const [editingData, setEditingData] = useState({
@@ -26,7 +27,7 @@ const ManageBooks = () => {
     category: '',
     oldPrice: '',
     newPrice: '',
-    stock: '', // new stock field
+    stock: '', // yeni stok alanı
     description: '',
     author: '',
     publisher: '',
@@ -36,10 +37,10 @@ const ManageBooks = () => {
     dimensions: '',
     editionNumber: '',
     paperType: '',
-    coverImage: '' // current cover image path
+    coverImage: '' // mevcut kapak resmi yolu
   });
 
-  // For new image selection
+  // Yeni resim seçimi için state
   const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ const ManageBooks = () => {
       category: book.category,
       oldPrice: book.oldPrice,
       newPrice: book.newPrice,
-      stock: book.stock, // set the stock value
+      stock: book.stock, // stok değeri ayarlanıyor
       description: book.description,
       author: book.author,
       publisher: book.publisher,
@@ -75,7 +76,7 @@ const ManageBooks = () => {
       dimensions: book.dimensions,
       editionNumber: book.editionNumber,
       paperType: book.paperType,
-      coverImage: book.coverImage // current image
+      coverImage: book.coverImage // mevcut resim
     });
     setSelectedImage(null);
     setModalIsOpen(true);
@@ -89,7 +90,7 @@ const ManageBooks = () => {
       category: '',
       oldPrice: '',
       newPrice: '',
-      stock: '', // reset stock
+      stock: '', // stok sıfırlanıyor
       description: '',
       author: '',
       publisher: '',
@@ -134,7 +135,7 @@ const ManageBooks = () => {
           {
             headers: {
               'Authorization': `Bearer ${token}`,
-              // Content-Type header will be set automatically
+              // 'Content-Type' header otomatik ayarlanır
             }
           }
         );
@@ -181,15 +182,12 @@ const ManageBooks = () => {
     }
   };
 
-  // Order fonksiyonu dashboard'da artık kullanılmıyor, siparişler satış sayfasından alınıyor.
-  // Bu yüzden ilgili buton ve fonksiyon kaldırıldı.
-
   if (loading) return <Loading />;
 
-  // Get unique categories from the books
+  // Kitaplardan benzersiz kategorileri al
   const categories = [...new Set(books.map((book) => book.category))];
 
-  // Filter by search query (title) and category
+  // Arama (başlığa göre) ve kategori filtresi uygulama
   let filteredBooks = books.filter((book) =>
     book.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -197,30 +195,37 @@ const ManageBooks = () => {
     filteredBooks = filteredBooks.filter((book) => book.category === selectedCategory);
   }
 
-  // Sort by price if required
-  if (sortOrder === 'asc') {
-    filteredBooks = filteredBooks.slice().sort((a, b) => a.newPrice - b.newPrice);
-  } else if (sortOrder === 'desc') {
-    filteredBooks = filteredBooks.slice().sort((a, b) => b.newPrice - a.newPrice);
+  // Sıralama mantığı: Eğer fiyat veya stok sıralaması aktifse, ikisini de uygulayalım
+  if (sortOrder !== 'default' || stockSortOrder !== 'default') {
+    filteredBooks = filteredBooks.slice().sort((a, b) => {
+      let result = 0;
+      if (sortOrder !== 'default') {
+        result = sortOrder === 'asc' ? a.newPrice - b.newPrice : b.newPrice - a.newPrice;
+      }
+      if (result === 0 && stockSortOrder !== 'default') {
+        result = stockSortOrder === 'asc' ? a.stock - b.stock : b.stock - a.stock;
+      }
+      return result;
+    });
   }
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow rounded">
       <h2 className="text-2xl font-bold mb-4">Manage Books</h2>
 
-      {/* Search, Category Filter, and Price Sort */}
+      {/* Arama, Kategori, Fiyat ve Stok Sıralama */}
       <div className="mb-4 flex flex-col md:flex-row md:items-center md:gap-4">
         <input
           type="text"
           placeholder="Search by book title..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full md:w-1/3 p-2 border rounded"
+          className="w-full md:w-1/4 p-2 border rounded"
         />
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full md:w-1/3 p-2 border rounded"
+          className="w-full md:w-1/4 p-2 border rounded"
         >
           <option value="">All Categories</option>
           {categories.map((cat) => (
@@ -232,11 +237,20 @@ const ManageBooks = () => {
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value)}
-          className="w-full md:w-1/3 p-2 border rounded"
+          className="w-full md:w-1/4 p-2 border rounded"
         >
           <option value="default">Price Sorting</option>
           <option value="asc">Price: Low to High</option>
           <option value="desc">Price: High to Low</option>
+        </select>
+        <select
+          value={stockSortOrder}
+          onChange={(e) => setStockSortOrder(e.target.value)}
+          className="w-full md:w-1/4 p-2 border rounded"
+        >
+          <option value="default">Stock Sorting</option>
+          <option value="asc">Stock: Low to High</option>
+          <option value="desc">Stock: High to Low</option>
         </select>
       </div>
 
@@ -284,7 +298,7 @@ const ManageBooks = () => {
                   >
                     Delete
                   </button>
-                  {/* "Order" butonu kaldırıldı; sipariş işlemleri satış sayfasında gerçekleştiriliyor */}
+                  {/* "Order" butonu kaldırıldı; sipariş işlemleri satış sayfasında */}
                 </div>
               </td>
             </tr>
@@ -292,7 +306,7 @@ const ManageBooks = () => {
         </tbody>
       </table>
 
-      {/* Modal for Editing Book Details */}
+      {/* Kitap Düzenleme Modal'ı */}
       <Modal
         isOpen={modalIsOpen}
         onRequestClose={closeModal}
@@ -355,7 +369,7 @@ const ManageBooks = () => {
               className="w-full p-1 border rounded"
             />
           </div>
-          {/* New Stock Field */}
+          {/* Yeni Stock Alanı */}
           <div className="mb-4">
             <label className="block text-gray-700">Stock</label>
             <input
@@ -464,7 +478,7 @@ const ManageBooks = () => {
               placeholder="Enter paper type"
             />
           </div>
-          {/* Cover Image Update */}
+          {/* Kapak Resmi Güncelleme */}
           <div className="mb-4 col-span-2">
             <label className="block text-gray-700">Cover Image</label>
             <input

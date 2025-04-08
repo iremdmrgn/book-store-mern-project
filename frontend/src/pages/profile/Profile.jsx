@@ -5,8 +5,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getImgUrl } from "../../utils/getImgUrl";
 import axios from "axios";
-import { FaEdit } from "react-icons/fa";
+import { FaEdit, FaRegClipboard, FaTools, FaCheckCircle } from "react-icons/fa";
 import { PiShippingContainer } from "react-icons/pi";
+import { FaBoxOpen } from "react-icons/fa";
+import { MdLocalShipping } from "react-icons/md";
 import ReactDOMServer from "react-dom/server";
 import {
   updateProfile,
@@ -19,6 +21,85 @@ import {
 import { LuTrash2 } from "react-icons/lu";
 import { MdAddHome, MdOutlineAddCard } from "react-icons/md";
 import { SiVisa, SiMastercard, SiAmericanexpress, SiDiscover } from "react-icons/si";
+import io from "socket.io-client";
+
+// Full order progress tracker (shows all stages) – used in modal when user clicks an order
+const OrderStatusTracker = ({ status }) => {
+  const steps = ["Order Received", "Preparing Order", "Shipped", "Delivered"];
+  let currentIndex = steps.findIndex((step) => step === status);
+  if (currentIndex === -1) currentIndex = 0; // If no match, default to first step
+  return (
+    <div className="flex items-center space-x-2 mt-2">
+      {steps.map((step, index) => {
+        const isActive = index === currentIndex;
+        const isCompleted = index < currentIndex;
+        return (
+          <React.Fragment key={step}>
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+                  isCompleted
+                    ? "bg-green-500"
+                    : isActive
+                    ? "bg-green-500"
+                    : "bg-gray-300"
+                }`}
+              >
+                {/* Number removed */}
+              </div>
+              <span className="text-xs text-center mt-1">{step}</span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={`flex-1 h-1 ${
+                  index < currentIndex
+                    ? "bg-green-500"
+                    : index === currentIndex
+                    ? "bg-gray-500"
+                    : "bg-gray-300"
+                }`}
+              ></div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+};
+
+// Minimal order status indicator (only shows current status with an icon) – used in the order list view
+const OrderStatusIndicator = ({ status }) => {
+  // Map each status to an icon and color
+  const statusMap = {
+    "Order Received": {
+      icon: <FaRegClipboard />,
+      color: "text-green-500",
+      label: "Order Received",
+    },
+    "Preparing Order": {
+      icon: <FaBoxOpen />,
+      color: "text-green-500",
+      label: "Preparing Order",
+    },
+    Shipped: {
+      icon: <MdLocalShipping />,
+      color: "text-green-500",
+      label: "Shipped",
+    },
+    Delivered: {
+      icon: <FaCheckCircle />,
+      color: "text-green-500",
+      label: "Delivered",
+    },
+  };
+  const current = statusMap[status] || statusMap["Order Received"];
+  return (
+    <div className="flex items-center space-x-1 mt-2">
+      <span className={`text-xl ${current.color}`}>{current.icon}</span>
+      <span className="text-sm font-medium">{current.label}</span>
+    </div>
+  );
+};
 
 const Profile = () => {
   const { currentUser, logout, refreshUser } = useAuth();
@@ -94,7 +175,35 @@ const Profile = () => {
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
 
+  // Fetch orders using RTK Query
   const { data: orders } = useGetOrderByEmailQuery(currentUser?.email || "");
+
+  // Local state for customer orders to allow real-time socket updates
+  const [customerOrders, setCustomerOrders] = useState([]);
+  useEffect(() => {
+    if (orders) {
+      setCustomerOrders(orders);
+    }
+  }, [orders]);
+
+  // Socket integration: listen for "orderUpdated" events and update local orders
+  useEffect(() => {
+    // Establish socket connection (adjust URL as needed)
+    const socket = io("http://localhost:5000");
+    socket.on("orderUpdated", (updatedOrder) => {
+      // If the updated order belongs to the current user, update customerOrders
+      if (updatedOrder.email === currentUser?.email) {
+        setCustomerOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order._id === updatedOrder._id ? updatedOrder : order
+          )
+        );
+      }
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -503,38 +612,11 @@ const Profile = () => {
     setEditCardHolder("");
   };
 
-  const handleUpdatePayment = async (paymentId) => {
-    if (
-      editCardNumber.trim() !== "" &&
-      editExpiryDate.trim() !== "" &&
-      editCvv.trim() !== "" &&
-      editCardHolder.trim() !== ""
-    ) {
-      const updatedPayment = { cardNumber: editCardNumber, expiryDate: editExpiryDate, cvv: editCvv, cardHolder: editCardHolder };
-      try {
-        await axios.put(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}/${paymentId}`, updatedPayment);
-        fetchPaymentMethods();
-        cancelEditPayment();
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Payment Method Updated",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-      } catch (err) {
-        console.error("Error updating payment method:", err);
-        Swal.fire({
-          icon: "error",
-          title: "Failed to update payment method",
-          text: "Please try again.",
-        });
-      }
-    }
-  };
-
+  // The modal (handleOrderClick) remains unchanged.
   const handleOrderClick = (order) => {
-    const iconHtml = ReactDOMServer.renderToStaticMarkup(<PiShippingContainer size={24} />);
+    const statusTrackerHtml = ReactDOMServer.renderToStaticMarkup(
+      <OrderStatusTracker status={order.status || "Order Received"} />
+    );
     let itemsHtml = "";
     if (order.items && order.items.length > 0) {
       order.items.forEach((item) => {
@@ -552,29 +634,28 @@ const Profile = () => {
       });
     }
     Swal.fire({
-      title: `<strong>Order ${order.orderNumber ? order.orderNumber : order._id}</strong>`,
+      title: `<strong>Order Details</strong>`,
       html: `
         <div style="text-align: left;">
-          <p><strong>Status:</strong> ${order.status || "Pending"}</p>
+          <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
+          <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+          <p><strong>Order Summary:</strong> ${
+            order.items && order.items.length > 0
+              ? `${order.items.length} item${order.items.length > 1 ? "s" : ""}`
+              : "N/A"
+          }</p>
           <p><strong>Total:</strong> ${
             order.totalPrice !== undefined && order.totalPrice !== null
               ? `$${order.totalPrice.toFixed(2)}`
               : "N/A"
           }</p>
-          <p><strong>Placed on:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+          <p><strong>Order Details:</strong></p>
+          ${statusTrackerHtml}
           <hr style="margin: 1rem 0;"/>
           <p style="font-size: 1rem; font-weight:bold;">Items:</p>
           ${itemsHtml}
-          <hr style="margin: 1rem 0;"/>
-          <p style="font-size: 1rem; font-weight:bold;">Shipping Details:</p>
-          <p style="font-size: 0.9rem; display: flex; align-items: center;">
-            ${iconHtml} <span style="margin-left: 8px;">${
-              order.trackingInfo || "Your order is being processed. Tracking info will be updated soon."
-            }</span>
-          </p>
         </div>
       `,
-      icon: "info",
       width: "600px",
       showCloseButton: true,
       confirmButtonText: "Close",
@@ -698,7 +779,7 @@ const Profile = () => {
             <div className="p-8 bg-white shadow-xl rounded-xl w-full max-w-2xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black">
-                  Your Payment Methods
+                  My Payment Methods
                 </h3>
                 <button
                   onClick={() => setSelectedTab("addPayment")}
@@ -905,32 +986,38 @@ const Profile = () => {
           {selectedTab === "orders" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
-                Your Orders
+                My Orders
               </h3>
               <div>
-                {orders?.length === 0 && <p className="text-black">No orders found</p>}
-                {orders?.map((order) => (
-                  <div
-                    key={order._id}
-                    onClick={() => handleOrderClick(order)}
-                    className="p-4 bg-gray-100 rounded-lg mb-4 cursor-pointer hover:bg-gray-200 transition-colors flex items-center gap-4"
-                  >
-                    {order.items && order.items.length > 0 && (
-                      <img
-                        src={order.items[0].coverImage ? getImgUrl(order.items[0].coverImage) : "/default-image.jpg"}
-                        alt="Book cover"
-                        className="w-20 h-20 object-cover rounded shadow"
-                      />
-                    )}
-                    <div>
-                      <p className="font-semibold text-black">
-                        Order Number: {order.orderNumber ? order.orderNumber : order._id}
-                      </p>
-                      <p className="text-black">Status: {order.status ? order.status : "Pending"}</p>
-                      <p className="text-black">
-                        Total: {order.totalPrice !== undefined && order.totalPrice !== null ? `$${order.totalPrice.toFixed(2)}` : "N/A"}
-                      </p>
-                      <p className="text-black">Placed on: {new Date(order.createdAt).toLocaleDateString()}</p>
+                {customerOrders?.length === 0 && <p className="text-black">No orders found</p>}
+                {customerOrders?.map((order) => (
+                  <div key={order._id} className="p-4 bg-gray-100 rounded-lg mb-4">
+                    <div className="flex flex-col">
+                      {/* Top section with Date, Total and Details button */}
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-black"><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
+                          <p className="text-black"><strong>Total:</strong> {order.totalPrice !== undefined && order.totalPrice !== null ? `$${order.totalPrice.toFixed(2)}` : "N/A"}</p>
+                        </div>
+                        <div className="text-blue-600 cursor-pointer" onClick={() => handleOrderClick(order)}>
+                          Details
+                        </div>
+                      </div>
+                      <hr className="my-2" />
+                      {/* Bottom section: Status and product images */}
+                      <div className="mb-2">
+                        <OrderStatusIndicator status={order.status || "Order Received"} />
+                      </div>
+                      <div className="flex space-x-2">
+                        {order.items && order.items.map((item, idx) => (
+                          <img
+                            key={idx}
+                            src={item.coverImage ? getImgUrl(item.coverImage) : "/default-image.jpg"}
+                            alt="Book cover"
+                            className="w-20 h-20 object-cover rounded shadow"
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -941,7 +1028,7 @@ const Profile = () => {
           {selectedTab === "userInfo" && (
             <div className="p-6 border rounded-2xl bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
-                Your Information
+                My Information
               </h3>
               <div className="grid gap-4">
                 <div className="flex flex-col">
@@ -997,7 +1084,7 @@ const Profile = () => {
             <div className="p-8 bg-white shadow-xl rounded-xl w-full max-w-2xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black">
-                  Your Addresses
+                  My Addresses
                 </h3>
                 <button onClick={() => setSelectedTab("addAddress")} className="inline-flex items-center px-4 py-1 text-blue-900">
                   <MdAddHome size={24} className="mr-2" /> Add New Address
@@ -1168,7 +1255,7 @@ const Profile = () => {
           {selectedTab === "reviews" && (
             <div className="p-6 border rounded-lg bg-white text-black shadow-lg w-full max-w-2xl">
               <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
-                Your Reviews
+                My Reviews
               </h3>
               <div className="mt-8 space-y-4">
                 {reviews.length > 0 ? (

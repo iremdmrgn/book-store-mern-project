@@ -38,14 +38,36 @@ exports.getBestSellingBooks = async (req, res) => {
           createdAt: { $gte: startOfMonthUTC, $lte: endOfMonthUTC }
         }
       },
-      {
-        $unwind: "$items"
-      },
+      { $unwind: "$items" },
       {
         $group: {
           _id: "$items.productId",
-          totalSold: { $sum: "$items.quantity" },
-          title: { $first: "$items.title" } // Order içindeki title bilgisini kullanıyoruz.
+          totalSold: { $sum: "$items.quantity" }
+        }
+      },
+      // Eğer productId alanınız string ise ObjectId'ye dönüştürüyoruz.
+      {
+        $addFields: {
+          productObjId: { $toObjectId: "$_id" }
+        }
+      },
+      {
+        $lookup: {
+          from: "books",
+          localField: "productObjId",
+          foreignField: "_id",
+          as: "bookDetails"
+        }
+      },
+      { $unwind: "$bookDetails" },
+      {
+        $project: {
+          _id: 0,
+          productId: "$_id",
+          totalSold: 1,
+          title: "$bookDetails.title",
+          coverImage: "$bookDetails.coverImage"
+          // İhtiyacınıza göre başka alanlar da ekleyebilirsiniz.
         }
       },
       { $sort: { totalSold: -1 } },
