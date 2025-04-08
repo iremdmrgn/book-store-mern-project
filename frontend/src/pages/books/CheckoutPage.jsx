@@ -13,7 +13,15 @@ import { SiVisa, SiMastercard, SiAmericanexpress, SiDiscover } from 'react-icons
 const CheckoutPage = () => {
   const cartItems = useSelector((state) => state.cart.cartItems);
   const dispatch = useDispatch();
+  // Calculate the subtotal of the order
   const totalPrice = cartItems.reduce((acc, item) => acc + item.newPrice * item.quantity, 0).toFixed(2);
+
+  // Calculate shipping cost: free if order is $100 or more, otherwise $10
+  const orderAmount = Number(totalPrice);
+  const shippingCost = orderAmount >= 100 ? 0 : 10;
+  // Calculate how much more the user needs to spend for free shipping
+  const additionalToFreeShipping = orderAmount >= 100 ? 0 : (100 - orderAmount);
+
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -27,7 +35,7 @@ const CheckoutPage = () => {
     trigger,
   } = useForm();
 
-  // 4 steps: 1. Personal Info, 2. Address, 3. Payment, 4. Review
+  // The 4 steps: 1. Personal Info, 2. Address, 3. Payment, 4. Review & Confirm
   const [step, setStep] = useState(1);
   const [createOrder, { isLoading }] = useCreateOrderMutation();
 
@@ -77,7 +85,7 @@ const CheckoutPage = () => {
     if (currentUser?.uid) fetchSavedPayments();
   }, [currentUser]);
 
-  // Helper to detect card brand
+  // Helper to detect card brand based on card number
   const detectCardBrand = (number) => {
     const cleaned = number.replace(/\s+/g, "");
     if (cleaned.startsWith("4")) return "visa";
@@ -180,6 +188,8 @@ const CheckoutPage = () => {
         quantity: Number(item.quantity)
       })),
       totalPrice: Number(totalPrice),
+      shippingCost, // add shipping cost to order data
+      finalPrice: Number(totalPrice) + shippingCost, // order subtotal plus shipping
     };
 
     console.log("Order Data:", orderData);
@@ -222,7 +232,7 @@ const CheckoutPage = () => {
     { number: 1, title: "Personal Info" },
     { number: 2, title: "Address" },
     { number: 3, title: "Payment" },
-    { number: 4, title: "Review" },
+    { number: 4, title: "Review & Confirm" },
   ];
 
   const handleStepClick = async (targetStep) => {
@@ -337,7 +347,7 @@ const CheckoutPage = () => {
       else
         Swal.fire({
           title: 'Incomplete',
-          text: 'Fill in all required Personal Info fields.',
+          text: 'Please fill in all required Personal Info fields.',
           icon: 'warning',
         });
     } else if (step === 2) {
@@ -379,7 +389,7 @@ const CheckoutPage = () => {
         } else {
           Swal.fire({
             title: 'Incomplete',
-            text: 'Fill in all required Address fields.',
+            text: 'Please fill in all required Address fields.',
             icon: 'warning',
           });
         }
@@ -421,7 +431,7 @@ const CheckoutPage = () => {
         } else {
           Swal.fire({
             title: 'Incomplete',
-            text: 'Fill in all required Payment fields.',
+            text: 'Please fill in all required Payment fields.',
             icon: 'warning',
           });
         }
@@ -880,11 +890,30 @@ const CheckoutPage = () => {
                       )}
                     </div>
                   </div>
-                  
-                  {/* Total */}
-                  <div className="border-t pt-3 mt-6 flex justify-end">
-                    <span className="font-semibold text-lg mr-2">Total:</span>
-                    <span className="text-lg font-bold">${totalPrice}</span>
+
+                  {/* Shipping, Total and Additional Notification */}
+                  <div className="border-t pt-3 mt-6">
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-lg">Subtotal:</span>
+                      <span className="text-lg font-bold">${totalPrice}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="font-semibold text-lg">Shipping:</span>
+                      <span className="text-lg font-bold">
+                        {shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}
+                      </span>
+                    </div>
+                    {shippingCost > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm text-orange-600">
+                          {`Spend $${additionalToFreeShipping.toFixed(2)} more for free shipping!`}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex justify-between mt-2">
+                      <span className="font-semibold text-lg">Total:</span>
+                      <span className="text-lg font-bold">${(orderAmount + shippingCost).toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
