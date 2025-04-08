@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const User = require('./users/user.model');
+const Order = require('./models/Order');
+
  // User modelinizin doğru yolunu belirtin
 require('dotenv').config();
 

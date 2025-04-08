@@ -11,6 +11,7 @@ const socket = io("http://localhost:5000");
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [orderStatusUpdates, setOrderStatusUpdates] = useState({});
+  const [orderShippingUpdates, setOrderShippingUpdates] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,6 +20,16 @@ const OrdersPage = () => {
     "Order Received",
     "Preparing Order",
     "Shipped",
+    "Delivered"
+  ];
+
+  // Options for shipping statuses (örneğin; backend'inizde migration sonrası shippingStatus "Pending" dan sonra güncellenmek üzere)
+  // Eğer shippingStatus güncellemesi için profesyonel değerler kullanmak isterseniz, aşağıdaki listeyi bu şekilde tutabilirsiniz.
+  const shippingStatusOptions = [
+    "Dispatched",
+    "In Transit",
+    "At the Shipping Facility",
+    "Out for Delivery",
     "Delivered"
   ];
 
@@ -58,7 +69,7 @@ const OrdersPage = () => {
     };
   }, []);
 
-  // Save the selected new status for each order in state
+  // Save the selected new order status for each order
   const handleStatusChange = (orderId, newStatus) => {
     setOrderStatusUpdates(prev => ({
       ...prev,
@@ -74,16 +85,16 @@ const OrdersPage = () => {
       return;
     }
     try {
-      // Update order API call – adjust the endpoint as needed
+      // Update order status via API; endpoint ayarlarınızı gerektiği şekilde düzenleyin
       await axios.put(`http://localhost:5000/api/orders/${orderId}`, { status: newStatus });
-      // If successful, update the order status in state
+      // Update local state
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order._id === orderId ? { ...order, status: newStatus } : order
         )
       );
       toast.success("Order status updated successfully!");
-      // Clear the selected status update for this order
+      // Clear selection
       setOrderStatusUpdates(prev => {
         const updated = { ...prev };
         delete updated[orderId];
@@ -92,6 +103,43 @@ const OrdersPage = () => {
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error("Error updating order status.");
+    }
+  };
+
+  // Save the selected new shipping status for each order
+  const handleShippingStatusChange = (orderId, newStatus) => {
+    setOrderShippingUpdates(prev => ({
+      ...prev,
+      [orderId]: newStatus,
+    }));
+  };
+
+  // API call to update the shipping status
+  const handleShippingStatusUpdate = async (orderId) => {
+    const newShippingStatus = orderShippingUpdates[orderId];
+    if (!newShippingStatus) {
+      toast.error("Please select a shipping status to update.");
+      return;
+    }
+    try {
+      // Update shipping status via API endpoint
+      await axios.put(`http://localhost:5000/api/orders/${orderId}`, { shippingStatus: newShippingStatus });
+      // Update local state
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order._id === orderId ? { ...order, shippingStatus: newShippingStatus } : order
+        )
+      );
+      toast.success("Shipping status updated successfully!");
+      // Clear selection
+      setOrderShippingUpdates(prev => {
+        const updated = { ...prev };
+        delete updated[orderId];
+        return updated;
+      });
+    } catch (err) {
+      console.error("Error updating shipping status:", err);
+      toast.error("Error updating shipping status.");
     }
   };
 
@@ -131,6 +179,9 @@ const OrdersPage = () => {
                       : "N/A"}
                   </p>
                   <p className="text-black">Placed on: {new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p className="text-black">
+                    Shipping Status: {order.shippingStatus ? order.shippingStatus : "Pending"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -150,7 +201,27 @@ const OrdersPage = () => {
                   onClick={() => handleStatusUpdate(order._id)}
                   className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition-all duration-200"
                 >
-                  Update Status
+                  Update Order Status
+                </button>
+              </div>
+              <div className="flex items-center gap-4 mt-4">
+                <select
+                  value={orderShippingUpdates[order._id] || order.shippingStatus || ""}
+                  onChange={(e) => handleShippingStatusChange(order._id, e.target.value)}
+                  className="p-2 border rounded"
+                >
+                  <option value="">Select Shipping Status</option>
+                  {shippingStatusOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleShippingStatusUpdate(order._id)}
+                  className="bg-green-500 text-white px-5 py-2 rounded hover:bg-green-600 transition-all duration-200"
+                >
+                  Update Shipping Status
                 </button>
               </div>
             </div>

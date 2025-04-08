@@ -23,11 +23,13 @@ import { MdAddHome, MdOutlineAddCard } from "react-icons/md";
 import { SiVisa, SiMastercard, SiAmericanexpress, SiDiscover } from "react-icons/si";
 import io from "socket.io-client";
 
-// Full order progress tracker (shows all stages) – used in modal when user clicks an order
+// ------------------
+// Order Status Tracker – shows all stages (used in modal)
+// ------------------
 const OrderStatusTracker = ({ status }) => {
   const steps = ["Order Received", "Preparing Order", "Shipped", "Delivered"];
   let currentIndex = steps.findIndex((step) => step === status);
-  if (currentIndex === -1) currentIndex = 0; // If no match, default to first step
+  if (currentIndex === -1) currentIndex = 0; // default to first step if no match
   return (
     <div className="flex items-center space-x-2 mt-2">
       {steps.map((step, index) => {
@@ -45,7 +47,7 @@ const OrderStatusTracker = ({ status }) => {
                     : "bg-gray-300"
                 }`}
               >
-                {/* Number removed */}
+                {index + 1}
               </div>
               <span className="text-xs text-center mt-1">{step}</span>
             </div>
@@ -67,9 +69,81 @@ const OrderStatusTracker = ({ status }) => {
   );
 };
 
-// Minimal order status indicator (only shows current status with an icon) – used in the order list view
+// ------------------
+// Shipping Status Tracker – similar to above but for shipping events
+// ------------------
+// Bu bileşende opsiyonel olarak timeline prop'u var. timeline, her adım için zamanı içeren nesneler dizisi
+const ShippingStatusTracker = ({ shippingStatus, timeline }) => {
+  const steps = [
+    { step: "Shipped", info: "Shipment has started", location: "Istanbul, Turkey" },
+    { step: "In Transit", info: "On the way", location: "Ankara, Turkey" },
+    { step: "At the Shipping Facility", info: "Waiting at the facility", location: "Izmir, Turkey" },
+    { step: "Out for Delivery", info: "Out for delivery", location: "Bursa, Turkey" },
+    { step: "Delivered", info: "Delivered", location: "Kocaeli, Turkey" },
+  ];
+
+  let currentIndex = steps.findIndex(
+    (stepObj) => stepObj.step.toLowerCase() === shippingStatus.toLowerCase()
+  );
+  if (currentIndex === -1) currentIndex = 0; // Default to first step if no match
+
+  return (
+    <div className="space-y-4">
+      {steps.map((stepObj, index) => {
+        // If timeline exists, get time for this step (only for current step)
+        const timeDetail = timeline && index <= currentIndex ? timeline[index].time : null;
+        const isActive = index === currentIndex;
+        const isCompleted = index < currentIndex;
+
+        return (
+          <div key={stepObj.step} className="flex items-start space-x-4">
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+                  isCompleted
+                    ? "bg-blue-500"
+                    : isActive
+                    ? "bg-blue-500"
+                    : "bg-gray-300"
+                }`}
+              >
+                {index + 1}
+              </div>
+              <span className="text-xs mt-1">{stepObj.step}</span>
+            </div>
+            <div className="flex-1 h-px bg-gray-300 mx-2"></div>
+            <div className="flex flex-col text-sm font-medium text-gray-600">
+              {/* Show location and info up to the current step */}
+              {index <= currentIndex && (
+                <div className="text-xs text-gray-500">{stepObj.location}</div>
+              )}
+              {index <= currentIndex && (
+                <div className="text-xs text-gray-500">{stepObj.info}</div>
+              )}
+              {/* Only display time for current or previous steps */}
+              {timeDetail && index <= currentIndex && (
+                <div className="text-xs text-gray-500">{timeDetail}</div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+
+
+
+
+
+
+
+
+// ------------------
+// Minimal Order Status Indicator – used in order list view (unchanged)
+// ------------------
 const OrderStatusIndicator = ({ status }) => {
-  // Map each status to an icon and color
   const statusMap = {
     "Order Received": {
       icon: <FaRegClipboard />,
@@ -188,10 +262,8 @@ const Profile = () => {
 
   // Socket integration: listen for "orderUpdated" events and update local orders
   useEffect(() => {
-    // Establish socket connection (adjust URL as needed)
     const socket = io("http://localhost:5000");
     socket.on("orderUpdated", (updatedOrder) => {
-      // If the updated order belongs to the current user, update customerOrders
       if (updatedOrder.email === currentUser?.email) {
         setCustomerOrders((prevOrders) =>
           prevOrders.map((order) =>
@@ -211,7 +283,9 @@ const Profile = () => {
     }
   }, [currentUser]);
 
-  const userName = currentUser?.displayName ? currentUser.displayName.split(" ") : [];
+  const userName = currentUser?.displayName
+    ? currentUser.displayName.split(" ")
+    : [];
   const firstNameDisplay = userName[0] || currentUser?.email || "";
   const lastNameDisplay = userName[1] || "";
 
@@ -223,7 +297,9 @@ const Profile = () => {
 
   useEffect(() => {
     if (currentUser) {
-      const parts = currentUser.displayName ? currentUser.displayName.split(" ") : [];
+      const parts = currentUser.displayName
+        ? currentUser.displayName.split(" ")
+        : [];
       setEditableFirstName(parts[0] || currentUser.email || "");
       setEditableLastName(parts[1] || "");
       setEditableEmail(currentUser.email || "");
@@ -233,7 +309,9 @@ const Profile = () => {
 
   const fetchAccount = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/account/${currentUser.uid}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/account/${currentUser.uid}`
+      );
       setEditableFirstName(response.data.firstName);
       setEditableLastName(response.data.lastName);
       setEditableEmail(response.data.email);
@@ -255,11 +333,16 @@ const Profile = () => {
       if (currentUser.providerData[0]?.providerId === "google.com") {
         await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
       } else {
-        const currentPassword = prompt("Please enter your current password to update your email:");
+        const currentPassword = prompt(
+          "Please enter your current password to update your email:"
+        );
         if (!currentPassword) {
           throw new Error("Password is required for reauthentication");
         }
-        const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+        const credential = EmailAuthProvider.credential(
+          currentUser.email,
+          currentPassword
+        );
         await reauthenticateWithCredential(currentUser, credential);
       }
 
@@ -269,12 +352,15 @@ const Profile = () => {
       if (editableEmail !== currentUser.email) {
         await updateEmail(currentUser, editableEmail);
       }
-      await axios.put(`http://localhost:5000/api/account/${currentUser.uid.trim()}`, {
-        firstName: editableFirstName,
-        lastName: editableLastName,
-        email: editableEmail,
-        phone: editablePhone,
-      });
+      await axios.put(
+        `http://localhost:5000/api/account/${currentUser.uid.trim()}`,
+        {
+          firstName: editableFirstName,
+          lastName: editableLastName,
+          email: editableEmail,
+          phone: editablePhone,
+        }
+      );
       await refreshUser();
       await fetchAccount();
       Swal.fire({
@@ -297,7 +383,9 @@ const Profile = () => {
   // --- Address Operations ---
   const fetchAddresses = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/address/${currentUser.uid.trim()}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/address/${currentUser.uid.trim()}`
+      );
       setAddresses(response.data);
     } catch (err) {
       console.error("Error fetching addresses:", err);
@@ -335,7 +423,10 @@ const Profile = () => {
         country: newCountry,
       };
       try {
-        await axios.post(`http://localhost:5000/api/address/${currentUser.uid.trim()}`, newAddress);
+        await axios.post(
+          `http://localhost:5000/api/address/${currentUser.uid.trim()}`,
+          newAddress
+        );
         fetchAddresses();
         setNewAddressTitle("");
         setNewStreet("");
@@ -365,7 +456,9 @@ const Profile = () => {
 
   const handleDeleteAddress = async (addressId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`);
+      await axios.delete(
+        `http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`
+      );
       setAddresses(addresses.filter((address) => address._id !== addressId));
       Swal.fire({
         position: "top-end",
@@ -436,7 +529,10 @@ const Profile = () => {
         country: editCountry,
       };
       try {
-        await axios.put(`http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`, updatedAddress);
+        await axios.put(
+          `http://localhost:5000/api/address/${currentUser.uid.trim()}/${addressId}`,
+          updatedAddress
+        );
         fetchAddresses();
         cancelEditAddress();
         Swal.fire({
@@ -460,7 +556,9 @@ const Profile = () => {
   // --- Payment Methods Operations ---
   const fetchPaymentMethods = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`
+      );
       setPayments(response.data);
     } catch (err) {
       console.error("Error fetching payment methods:", err);
@@ -479,7 +577,7 @@ const Profile = () => {
   }, [selectedTab, currentUser]);
 
   const validateCardNumber = (number) => {
-    const cleaned = number.replace(/\s+/g, '');
+    const cleaned = number.replace(/\s+/g, "");
     if (!/^\d{13,19}$/.test(cleaned)) return false;
     let sum = 0;
     let shouldDouble = false;
@@ -542,7 +640,10 @@ const Profile = () => {
       }
       const newPayment = { cardNumber, expiryDate, cvv, cardHolder };
       try {
-        await axios.post(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`, newPayment);
+        await axios.post(
+          `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}`,
+          newPayment
+        );
         fetchPaymentMethods();
         setCardNumber("");
         setExpiryDate("");
@@ -570,7 +671,9 @@ const Profile = () => {
 
   const handleDeletePayment = async (methodId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/payment-method/${currentUser.uid.trim()}/${methodId}`);
+      await axios.delete(
+        `http://localhost:5000/api/payment-method/${currentUser.uid.trim()}/${methodId}`
+      );
       setPayments(payments.filter((payment) => payment._id !== methodId));
       Swal.fire({
         position: "top-end",
@@ -612,11 +715,47 @@ const Profile = () => {
     setEditCardHolder("");
   };
 
-  // The modal (handleOrderClick) remains unchanged.
+  // --- Order Details Modal with extra user info, shipping address, payment method, and now shipping tracking ---
   const handleOrderClick = (order) => {
+    // Render order progress tracker
     const statusTrackerHtml = ReactDOMServer.renderToStaticMarkup(
       <OrderStatusTracker status={order.status || "Order Received"} />
     );
+
+    // Use user information from profile state
+    const userInfoHtml = `
+      <div style="margin-top: 1rem;">
+        <h4>User Information</h4>
+        <p><strong>Name:</strong> ${editableFirstName} ${editableLastName}</p>
+        <p><strong>Email:</strong> ${editableEmail}</p>
+        <p><strong>Phone:</strong> ${editablePhone}</p>
+      </div>
+    `;
+
+    // Shipping address info if available on the order
+    const addressHtml = order.shippingAddress
+      ? `
+        <div style="margin-top: 1rem;">
+          <h4>Shipping Address</h4>
+          <p><strong>Title:</strong> ${order.shippingAddress.title}</p>
+          <p>${order.shippingAddress.street}</p>
+          <p>${order.shippingAddress.city}, ${order.shippingAddress.district}, ${order.shippingAddress.neighborhood}</p>
+          <p>${order.shippingAddress.postalCode}, ${order.shippingAddress.country}</p>
+        </div>
+      `
+      : "";
+
+    // Payment method info if available on the order (check if cardNumber exists before slicing)
+    const paymentHtml = order.paymentMethod && order.paymentMethod.cardNumber
+      ? `
+        <div style="margin-top: 1rem;">
+          <h4>Payment Method</h4>
+          <p>Card ending with ${order.paymentMethod.cardNumber.slice(-4)}</p>
+        </div>
+      `
+      : "";
+
+    // Build HTML for order items
     let itemsHtml = "";
     if (order.items && order.items.length > 0) {
       order.items.forEach((item) => {
@@ -633,35 +772,79 @@ const Profile = () => {
         `;
       });
     }
+
+    // Shipping section with a clickable button to view tracking details (only if shippingStatus exists and is not "Pending")
+    // Eğer shippingStatus "Pending" değilse bu bölüm gösterilsin.
+    const shippingSectionHtml =
+      order.shippingStatus && order.shippingStatus !== "Pending"
+        ? `
+      <div style="margin-top: 1rem;">
+        <h4>Shipping Information</h4>
+        <p><strong>Status:</strong> ${order.shippingStatus}</p>
+        <button id="view-shipping-tracking" style="padding: 8px 16px; background-color: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">View Tracking Details</button>
+      </div>
+    `
+        : "";
+
+    // Assemble the final modal HTML
+    const modalHtml = `
+      <div style="text-align: left;">
+        <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
+        <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+        <p><strong>Order Summary:</strong> ${
+          order.items && order.items.length > 0
+            ? `${order.items.length} item${order.items.length > 1 ? "s" : ""}`
+            : "N/A"
+        }</p>
+        <p><strong>Total:</strong> ${
+          order.totalPrice !== undefined && order.totalPrice !== null
+            ? `$${order.totalPrice.toFixed(2)}`
+            : "N/A"
+        }</p>
+        ${statusTrackerHtml}
+        <hr style="margin: 1rem 0;"/>
+        <p style="font-size: 1rem; font-weight:bold;">Items:</p>
+        ${itemsHtml}
+        ${userInfoHtml}
+        ${addressHtml}
+        ${paymentHtml}
+        ${shippingSectionHtml}
+      </div>
+    `;
+
     Swal.fire({
       title: `<strong>Order Details</strong>`,
-      html: `
-        <div style="text-align: left;">
-          <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
-          <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-          <p><strong>Order Summary:</strong> ${
-            order.items && order.items.length > 0
-              ? `${order.items.length} item${order.items.length > 1 ? "s" : ""}`
-              : "N/A"
-          }</p>
-          <p><strong>Total:</strong> ${
-            order.totalPrice !== undefined && order.totalPrice !== null
-              ? `$${order.totalPrice.toFixed(2)}`
-              : "N/A"
-          }</p>
-          <p><strong>Order Details:</strong></p>
-          ${statusTrackerHtml}
-          <hr style="margin: 1rem 0;"/>
-          <p style="font-size: 1rem; font-weight:bold;">Items:</p>
-          ${itemsHtml}
-        </div>
-      `,
+      html: modalHtml,
       width: "600px",
       showCloseButton: true,
       confirmButtonText: "Close",
       customClass: {
         title: "swal2-title-custom",
         htmlContainer: "swal2-html-container-custom",
+      },
+      didOpen: (domElement) => {
+        const btn = domElement.querySelector("#view-shipping-tracking");
+        if (btn) {
+          btn.addEventListener("click", () => {
+            // Örnek timeline; gerçek uygulamada bu veriyi API'den veya order nesnesinden alabilirsiniz.
+            const sampleTimeline = [
+              { step: "Shipped", time: "10:30 AM" },
+              { step: "In Transit", time: "12:00 PM" },
+              { step: "At the Shipping Facility", time: "02:15 PM" },
+              { step: "Out for Delivery", time: "04:00 PM" },
+              { step: "Delivered", time: "06:45 PM" },
+            ];
+            const shippingTrackerHtml = ReactDOMServer.renderToStaticMarkup(
+              <ShippingStatusTracker shippingStatus={order.shippingStatus} timeline={sampleTimeline} />
+            );
+            Swal.fire({
+              title: "Shipping Tracking Details",
+              html: shippingTrackerHtml,
+              width: "600px",
+              confirmButtonText: "Close",
+            });
+          });
+        }
       },
     });
   };
@@ -689,13 +872,17 @@ const Profile = () => {
 
   const fetchUserReviews = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/reviews/user/${currentUser.uid}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/reviews/user/${currentUser.uid}`
+      );
       const reviewsData = response.data;
       const updatedReviews = await Promise.all(
         reviewsData.map(async (review) => {
           if (!review.coverImage) {
             try {
-              const { data: book } = await axios.get(`http://localhost:5000/api/books/${review.bookId}`);
+              const { data: book } = await axios.get(
+                `http://localhost:5000/api/books/${review.bookId}`
+              );
               return { ...review, coverImage: book.coverImage, bookTitle: book.title || review.bookTitle };
             } catch (error) {
               console.error("Error fetching book for review:", error);
@@ -840,7 +1027,7 @@ const Profile = () => {
                           </div>
                           <div className="mt-2 flex justify-end space-x-4">
                             <button
-                              onClick={() => handleUpdatePayment(payment._id)}
+                              onClick={() => handleDeletePayment(payment._id)}
                               className="px-6 py-1 text-sm bg-gray-400 text-black rounded-lg hover:bg-gray-500 transition"
                             >
                               Save
@@ -1153,7 +1340,9 @@ const Profile = () => {
                           <p className="text-black">
                             {address.city}, {address.district}, {address.neighborhood}
                           </p>
-                          <p className="text-black">{address.postalCode}, {address.country}</p>
+                          <p className="text-black">
+                            {address.postalCode}, {address.country}
+                          </p>
                           <div className="relative">
                             <button onClick={() => handleDeleteAddress(address._id)} className="absolute -top-28 -right-2 text-red-600 hover:text-red-800 transition">
                               <LuTrash2 size={20} />

@@ -30,8 +30,19 @@ const createAOrder = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-    const updatedOrder = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    // Gönderilen req.body içinden hem status hem de shippingStatus alanlarını alalım.
+    const { status, shippingStatus } = req.body;
+    
+    // Güncellenecek alanları dinamik oluşturuyoruz.
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (shippingStatus !== undefined) updateData.shippingStatus = shippingStatus;
+    
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
     console.log("Order status updated:", updatedOrder);
 
     // Emit socket event for real-time update
@@ -44,9 +55,10 @@ const updateOrderStatus = async (req, res) => {
     res.status(200).json(updatedOrder);
   } catch (error) {
     console.error("Error updating order status", error);
-    res.status(500).json({ message: "Failed to update order status" });
+    res.status(500).json({ message: "Failed to update order status", error: error.message });
   }
 };
+
 
 const getOrderByEmail = async (req, res) => {
   try {

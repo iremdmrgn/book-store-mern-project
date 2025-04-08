@@ -68,7 +68,11 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: "Pending", // Order status
   },
-  // New optional fields for payment and shipping
+  // Yeni alanlar
+  shippingStatus: {
+    type: String,
+    default: "Pending", // Sipariş oluşturulurken default olarak "Pending"
+  },
   paymentMethod: {
     type: String,
     default: "Cash on Delivery", // Payment method

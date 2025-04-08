@@ -47,6 +47,15 @@ const ordersApi = createApi({
       }),
       providesTags: ['Orders'],
     }),
+    // Yeni: Shipping Status Güncellemesi için Mutation
+    updateOrderShippingStatus: builder.mutation({
+      query: ({ orderId, shippingStatus }) => ({
+        url: `/${orderId}`,
+        method: "PUT",
+        body: { shippingStatus },
+      }),
+      invalidatesTags: ['Orders'],
+    }),
   }),
 });
 
@@ -55,6 +64,7 @@ export const {
   useGetOrderByEmailQuery, 
   useGetOrderCountQuery, 
   useGetRecentOrdersQuery, 
-  useGetAllOrdersQuery 
+  useGetAllOrdersQuery,
+  useUpdateOrderShippingStatusMutation
 } = ordersApi;
 export default ordersApi;
