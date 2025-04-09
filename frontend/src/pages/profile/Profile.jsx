@@ -85,19 +85,20 @@ const ShippingStatusTracker = ({ shippingStatus, timeline }) => {
   let currentIndex = steps.findIndex(
     (stepObj) => stepObj.step.toLowerCase() === shippingStatus.toLowerCase()
   );
-  if (currentIndex === -1) currentIndex = 0; // Default to first step if no match
+  if (currentIndex === -1) currentIndex = 0; // Eşleşme yoksa ilk adımdan başla
 
   return (
     <div className="space-y-4">
       {steps.map((stepObj, index) => {
-        // If timeline exists, get time for this step (only for current step)
+        // Zaman bilgisi sadece mevcut ve geçmiş adımlar için gösterilecek
         const timeDetail = timeline && index <= currentIndex ? timeline[index].time : null;
         const isActive = index === currentIndex;
         const isCompleted = index < currentIndex;
 
         return (
           <div key={stepObj.step} className="flex items-start space-x-4">
-            <div className="flex flex-col items-center">
+            {/* Yuvarlak sayı ve adım ismi için kapsayıcı (genişlik artırıldı) */}
+            <div className="flex flex-col items-center w-20">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
                   isCompleted
@@ -109,18 +110,19 @@ const ShippingStatusTracker = ({ shippingStatus, timeline }) => {
               >
                 {index + 1}
               </div>
-              <span className="text-xs mt-1">{stepObj.step}</span>
+              <span className="text-xs mt-1 text-center whitespace-nowrap">
+                {stepObj.step}
+              </span>
             </div>
             <div className="flex-1 h-px bg-gray-300 mx-2"></div>
-            <div className="flex flex-col text-sm font-medium text-gray-600">
-              {/* Show location and info up to the current step */}
+            {/* Detay bilgileri */}
+            <div className="flex flex-col text-sm font-medium text-gray-600 w-48 text-left space-y-1">
               {index <= currentIndex && (
                 <div className="text-xs text-gray-500">{stepObj.location}</div>
               )}
               {index <= currentIndex && (
                 <div className="text-xs text-gray-500">{stepObj.info}</div>
               )}
-              {/* Only display time for current or previous steps */}
               {timeDetail && index <= currentIndex && (
                 <div className="text-xs text-gray-500">{timeDetail}</div>
               )}
@@ -131,6 +133,10 @@ const ShippingStatusTracker = ({ shippingStatus, timeline }) => {
     </div>
   );
 };
+
+
+
+
 
 
 
