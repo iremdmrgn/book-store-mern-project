@@ -16,10 +16,10 @@ const ManageBooks = () => {
   // States for search, category filter, and sorting orders
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'asc' veya 'desc' (fiyat sıralaması)
-  const [stockSortOrder, setStockSortOrder] = useState('default'); // 'default', 'asc' veya 'desc' (stok sıralaması)
+  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'asc', 'desc' (fiyat sıralaması)
+  const [stockSortOrder, setStockSortOrder] = useState('default'); // 'default', 'asc', 'desc' (stok sıralaması)
 
-  // Modal ve düzenleme işlemleri için state (stok alanı eklendi)
+  // Modal and editing state (stok alanı eklendi)
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [editingBookId, setEditingBookId] = useState(null);
   const [editingData, setEditingData] = useState({
@@ -27,7 +27,7 @@ const ManageBooks = () => {
     category: '',
     oldPrice: '',
     newPrice: '',
-    stock: '', // yeni stok alanı
+    stock: '', // stok alanı
     description: '',
     author: '',
     publisher: '',
@@ -90,7 +90,7 @@ const ManageBooks = () => {
       category: '',
       oldPrice: '',
       newPrice: '',
-      stock: '', // stok sıfırlanıyor
+      stock: '',
       description: '',
       author: '',
       publisher: '',
@@ -107,11 +107,12 @@ const ManageBooks = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditingData((prev) => ({
+    setEditingData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'stock' ? Number(value) : value,
     }));
   };
+  
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -135,7 +136,6 @@ const ManageBooks = () => {
           {
             headers: {
               'Authorization': `Bearer ${token}`,
-              // 'Content-Type' header otomatik ayarlanır
             }
           }
         );
@@ -187,7 +187,7 @@ const ManageBooks = () => {
   // Kitaplardan benzersiz kategorileri al
   const categories = [...new Set(books.map((book) => book.category))];
 
-  // Arama (başlığa göre) ve kategori filtresi uygulama
+  // Arama ve kategori filtresi uygulama
   let filteredBooks = books.filter((book) =>
     book.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -195,7 +195,7 @@ const ManageBooks = () => {
     filteredBooks = filteredBooks.filter((book) => book.category === selectedCategory);
   }
 
-  // Sıralama mantığı: Eğer fiyat veya stok sıralaması aktifse, ikisini de uygulayalım
+  // Sıralama: fiyat veya stok sıralaması varsa uygulayalım
   if (sortOrder !== 'default' || stockSortOrder !== 'default') {
     filteredBooks = filteredBooks.slice().sort((a, b) => {
       let result = 0;
@@ -283,7 +283,15 @@ const ManageBooks = () => {
                   ${book.oldPrice}
                 </span>
               </td>
-              <td className="px-6 py-4">{book.stock}</td>
+              <td className="px-6 py-4">
+                {book.stock}
+                {book.stock === 0 && (
+                  <span className="ml-2 text-red-600 font-bold">Sold Out</span>
+                )}
+                {book.stock > 0 && book.stock < 10 && (
+                  <span className="ml-2 text-red-500 text-xs font-semibold">Low Stock!</span>
+                )}
+              </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-4">
                   <button
@@ -298,7 +306,6 @@ const ManageBooks = () => {
                   >
                     Delete
                   </button>
-                  {/* "Order" butonu kaldırıldı; sipariş işlemleri satış sayfasında */}
                 </div>
               </td>
             </tr>
@@ -369,7 +376,7 @@ const ManageBooks = () => {
               className="w-full p-1 border rounded"
             />
           </div>
-          {/* Yeni Stock Alanı */}
+          {/* Stok Alanı: min="0" ile negatif değer engelleniyor */}
           <div className="mb-4">
             <label className="block text-gray-700">Stock</label>
             <input
@@ -378,6 +385,7 @@ const ManageBooks = () => {
               value={editingData.stock}
               onChange={handleInputChange}
               className="w-full p-1 border rounded"
+              min="0"
             />
           </div>
           <div className="mb-4 col-span-2">

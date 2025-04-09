@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiShoppingCart } from 'react-icons/fi';
 import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
+import { IoNotifications } from 'react-icons/io5';  // Bu satırı ekleyin
 import { getImgUrl } from '../../utils/getImgUrl';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -14,7 +15,7 @@ const BookCard = ({ book }) => {
   const { currentUser } = useAuth();
   const favorites = useSelector((state) => state.favorites.items);
 
-  // Favori kontrolü: Eğer favori objesinde productId varsa onu, yoksa _id'yi kullanıyoruz.
+  // Favori kontrolü: favori objesinde productId varsa onu, yoksa _id kullanıyoruz.
   const isFavorite = favorites?.some((favorite) => {
     const favId = favorite.productId ? favorite.productId.toString() : favorite._id?.toString();
     return favId === book._id.toString();
@@ -26,7 +27,7 @@ const BookCard = ({ book }) => {
       const itemPayload = {
         productId: book._id,
         title: book.title,
-        coverImage: book.coverImage, // Veritabanında "book-1.png" gibi saklanıyorsa getImgUrl fonksiyonuyla URL oluşturulacak.
+        coverImage: book.coverImage,
         newPrice: book.newPrice,
         quantity: 1,
       };
@@ -47,6 +48,11 @@ const BookCard = ({ book }) => {
     } else {
       alert('Please log in to manage favorites.');
     }
+  };
+
+  // "Notify Me" butonuna basıldığında örnek bildirim
+  const handleNotifyMe = () => {
+    alert("We'll notify you when this book is back in stock!");
   };
 
   // Kitap detay sayfasına yönlendirme
@@ -83,15 +89,34 @@ const BookCard = ({ book }) => {
               ${book?.oldPrice}
             </span>
           </p>
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={handleAddToCart}
-              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 whitespace-nowrap"
-            >
-              <FiShoppingCart size={14} />
-              <span className="truncate">Add to Cart</span>
-            </button>
-          </div>
+
+          {/* Stok Kontrolü */}
+          {book.stock === 0 ? (
+            <div className="flex flex-col items-center">
+<div className="text-red-600 font-bold text-lg">Sold Out</div>
+
+
+          
+            </div>
+          ) : (
+            <>
+              {book.stock < 3 && (
+                <div className="mt-2 text-red-500 text-xs font-semibold">
+                  Hurry up! Only {book.stock} left in stock.
+                </div>
+              )}
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={handleAddToCart}
+                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 whitespace-nowrap"
+                >
+                  <FiShoppingCart size={14} />
+                  <span className="truncate">Add to Cart</span>
+                </button>
+              </div>
+            </>
+          )}
+
           <button
             onClick={handleAddToFavorites}
             className="absolute top-2 right-2 text-lg cursor-pointer z-10"

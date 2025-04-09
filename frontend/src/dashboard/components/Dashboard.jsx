@@ -18,6 +18,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Düşük stok uyarısı için state (stok 10'dan az ürünler)
+  const [lowStockBooks, setLowStockBooks] = useState([]);
+
   // Dashboard verilerini çekiyoruz
   useEffect(() => {
     const fetchData = async () => {
@@ -33,6 +36,7 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  // Best Selling Books verisini çekiyoruz
   useEffect(() => {
     const fetchBestSellingBooks = async () => {
       try {
@@ -45,14 +49,32 @@ const Dashboard = () => {
     fetchBestSellingBooks();
   }, []);
 
+  // Best Selling Books başlıklarını ayarlıyoruz
   useEffect(() => {
     const fetchBookTitles = async () => {
       if (!data.bestSellingBooks || data.bestSellingBooks.length === 0) return;
-      const titles = await Promise.all(data.bestSellingBooks.map(item => item.title || "Bilinmeyen Kitap"));
+      const titles = await Promise.all(
+        data.bestSellingBooks.map(item => item.title || "Bilinmeyen Kitap")
+      );
       setBestSellingLabels(titles);
     };
     fetchBookTitles();
   }, [data.bestSellingBooks]);
+
+  // Düşük stok kitaplarını çekelim (örneğin stok < 10 olan ürünler)
+  useEffect(() => {
+    const fetchLowStockBooks = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/books');
+        // Stoğu 10'dan az olan ürünleri filtreleyelim
+        const low = res.data.filter(book => book.stock < 10);
+        setLowStockBooks(low);
+      } catch (error) {
+        console.error("Error fetching low stock books:", error);
+      }
+    };
+    fetchLowStockBooks();
+  }, []);
 
   if (loading) return <Loading />;
   if (error) return <div>Error loading dashboard data.</div>;
@@ -67,6 +89,17 @@ const Dashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem' }}>
         <NotificationDropdown />
       </div>
+
+      {/* Genel düşük stok uyarısı */}
+      {lowStockBooks.length > 0 && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded">
+          <p className="text-red-600 font-semibold">
+            Warning: {lowStockBooks.length} product{lowStockBooks.length > 1 ? "s" : ""} have low stock!
+            Please restock: {lowStockBooks.map(book => book.title).join(", ")}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold">Total Orders</h2>

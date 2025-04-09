@@ -721,14 +721,13 @@ const Profile = () => {
     setEditCardHolder("");
   };
 
-  // --- Order Details Modal with extra user info, shipping address, payment method, and now shipping tracking ---
   const handleOrderClick = (order) => {
-    // Render order progress tracker
+    // Order progress tracker (durum takibi)
     const statusTrackerHtml = ReactDOMServer.renderToStaticMarkup(
       <OrderStatusTracker status={order.status || "Order Received"} />
     );
-
-    // Use user information from profile state
+  
+    // Kullanıcı bilgileri
     const userInfoHtml = `
       <div style="margin-top: 1rem;">
         <h4>User Information</h4>
@@ -737,31 +736,64 @@ const Profile = () => {
         <p><strong>Phone:</strong> ${editablePhone}</p>
       </div>
     `;
-
-    // Shipping address info if available on the order
-    const addressHtml = order.shippingAddress
+  
+    // Delivery Address: Eğer order.address nesnesi varsa,
+    // checkout bölümünüzdeki gibi "Data Net Bilgisayar - Muhittin mahallesi, Tekirdağ, 58760, Türkiye" formatında gösterilsin.
+    const addressHtml = order.address && typeof order.address === "object"
       ? `
-        <div style="margin-top: 1rem;">
-          <h4>Shipping Address</h4>
-          <p><strong>Title:</strong> ${order.shippingAddress.title}</p>
-          <p>${order.shippingAddress.street}</p>
-          <p>${order.shippingAddress.city}, ${order.shippingAddress.district}, ${order.shippingAddress.neighborhood}</p>
-          <p>${order.shippingAddress.postalCode}, ${order.shippingAddress.country}</p>
+        <div style="margin-top: 1rem; text-align: left;">
+          <h4>Delivery Address</h4>
+          <p style="color: #4a5568; font-size: 0.9rem;">
+            ${order.address.title ? order.address.title + " - " : ""}
+            ${order.address.street ? order.address.street + ", " : ""}
+            ${order.address.city ? order.address.city + ", " : ""}
+            ${order.address.postalCode ? order.address.postalCode + ", " : ""}
+            ${order.address.country || ""}
+          </p>
         </div>
       `
-      : "";
-
-    // Payment method info if available on the order (check if cardNumber exists before slicing)
-    const paymentHtml = order.paymentMethod && order.paymentMethod.cardNumber
-      ? `
-        <div style="margin-top: 1rem;">
+      : order.address
+        ? `
+        <div style="margin-top: 1rem; text-align: left;">
+          <h4>Delivery Address</h4>
+          <p style="color: #4a5568; font-size: 0.9rem;">${order.address}</p>
+        </div>
+      `
+        : "";
+  
+    // Payment Method: Eğer order.paymentMethod nesnesel ise, checkout'taki gibi detaylı gösterelim.
+    let paymentHtml = "";
+    if (order.paymentMethod && typeof order.paymentMethod === "object") {
+      let bankLogoHtml = "";
+      const brand = detectCardBrand(order.paymentMethod.cardNumber);
+      if (brand === "visa") {
+        bankLogoHtml = `<img src="/path-to-visa-logo.png" alt="Visa" style="width:32px; margin-right:8px;" />`;
+      } else if (brand === "mastercard") {
+        bankLogoHtml = `<img src="/path-to-mastercard-logo.png" alt="Mastercard" style="width:32px; margin-right:8px;" />`;
+      } else if (brand === "amex") {
+        bankLogoHtml = `<img src="/path-to-amex-logo.png" alt="Amex" style="width:32px; margin-right:8px;" />`;
+      } else if (brand === "discover") {
+        bankLogoHtml = `<img src="/path-to-discover-logo.png" alt="Discover" style="width:32px; margin-right:8px;" />`;
+      }
+      paymentHtml = `
+        <div style="margin-top: 1rem; text-align: left;">
           <h4>Payment Method</h4>
-          <p>Card ending with ${order.paymentMethod.cardNumber.slice(-4)}</p>
+          <p style="color: #4a5568; font-size: 0.9rem; display: flex; align-items: center;">
+            ${bankLogoHtml}
+            ${order.paymentMethod.cardHolder} — **** **** **** ${order.paymentMethod.cardNumber.slice(-4)} (Exp: ${order.paymentMethod.expiryDate})
+          </p>
         </div>
-      `
-      : "";
-
-    // Build HTML for order items
+      `;
+    } else if (order.paymentMethod) {
+      paymentHtml = `
+        <div style="margin-top: 1rem; text-align: left;">
+          <h4>Payment Method</h4>
+          <p style="color: #4a5568; font-size: 0.9rem;">${order.paymentMethod}</p>
+        </div>
+      `;
+    }
+  
+    // Order items HTML: Her bir sipariş ürününü checkout'taki gibi listeleyelim.
     let itemsHtml = "";
     if (order.items && order.items.length > 0) {
       order.items.forEach((item) => {
@@ -778,21 +810,22 @@ const Profile = () => {
         `;
       });
     }
-
-    // Shipping section with a clickable button to view tracking details (only if shippingStatus exists and is not "Pending")
-    // Eğer shippingStatus "Pending" değilse bu bölüm gösterilsin.
+  
+    // Shipping Information: Eğer order.shippingStatus varsa (ve "Pending" değilse)
     const shippingSectionHtml =
       order.shippingStatus && order.shippingStatus !== "Pending"
         ? `
-      <div style="margin-top: 1rem;">
-        <h4>Shipping Information</h4>
-        <p><strong>Status:</strong> ${order.shippingStatus}</p>
-        <button id="view-shipping-tracking" style="padding: 8px 16px; background-color: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">View Tracking Details</button>
-      </div>
-    `
+        <div style="margin-top: 1rem;">
+          <h4>Shipping Information</h4>
+          <p><strong>Status:</strong> ${order.shippingStatus}</p>
+          <button id="view-shipping-tracking" style="padding: 8px 16px; background-color: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+            View Tracking Details
+          </button>
+        </div>
+      `
         : "";
-
-    // Assemble the final modal HTML
+  
+    // Assemble final modal HTML:
     const modalHtml = `
       <div style="text-align: left;">
         <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
@@ -817,7 +850,7 @@ const Profile = () => {
         ${shippingSectionHtml}
       </div>
     `;
-
+  
     Swal.fire({
       title: `<strong>Order Details</strong>`,
       html: modalHtml,
@@ -832,7 +865,6 @@ const Profile = () => {
         const btn = domElement.querySelector("#view-shipping-tracking");
         if (btn) {
           btn.addEventListener("click", () => {
-            // Örnek timeline; gerçek uygulamada bu veriyi API'den veya order nesnesinden alabilirsiniz.
             const sampleTimeline = [
               { step: "Shipped", time: "10:30 AM" },
               { step: "In Transit", time: "12:00 PM" },
@@ -854,6 +886,10 @@ const Profile = () => {
       },
     });
   };
+  
+  
+  
+  
 
   const handleDeleteReview = async (reviewId) => {
     try {

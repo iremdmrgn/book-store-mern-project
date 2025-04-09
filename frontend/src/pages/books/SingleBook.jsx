@@ -7,6 +7,7 @@ import { addToCartAsync } from '../../redux/features/cart/cartSlice';
 import { addFavoriteAsync, removeFavoriteAsync } from '../../redux/features/favorites/favoritesSlice';
 import { useFetchBookByIdQuery } from '../../redux/features/books/booksApi';
 import { useAuth } from '../../context/AuthContext';
+import { IoNotifications } from 'react-icons/io5';
 import axios from 'axios';
 
 const SingleBook = () => {
@@ -22,7 +23,7 @@ const SingleBook = () => {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
 
-  // Favori kontrolü: favori objesinde productId varsa onu, yoksa _id kullanıyoruz.
+  // Favori kontrolü
   const isFavorite = favorites.some(
     (fav) => (fav.productId || fav._id).toString() === book?._id.toString()
   );
@@ -53,7 +54,7 @@ const SingleBook = () => {
     }
   };
 
-  // Kitap için review'ları çek
+  // Kitap için review'ları çekme
   const fetchReviewsForBook = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/reviews/book/${book._id}`);
@@ -98,6 +99,12 @@ const SingleBook = () => {
     } else {
       alert('Please log in to manage favorites.');
     }
+  };
+
+  // "Notify Me" butonuna basıldığında (örnek olarak alert)
+  const handleNotifyMe = () => {
+    // Gerçek uygulamada kullanıcı e-postası ve kitap bilgilerini API aracılığıyla kaydedebilirsiniz.
+    alert("We'll notify you when this book is back in stock!");
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -151,18 +158,39 @@ const SingleBook = () => {
             <p><strong className="font-semibold text-gray-800">First Edition Year:</strong> {book.editionYear || 'N/A'}</p>
           </div>
           {/* Book Price */}
-          <div className="text-3xl font-bold text-black mb-6">
+          <div className="text-3xl font-bold text-black mb-2">
             {book.newPrice ? `$${book.newPrice}` : 'Price not available'}
           </div>
-          {/* Add to Cart Button */}
-          <div className="flex gap-6 mb-6">
-            <button
-              onClick={() => handleAddToCart(book)}
-              className="text-lg px-8 py-3 bg-yellow-500 text-black font-semibold rounded-md shadow-xl hover:bg-yellow-600 focus:outline-none transition-all duration-200 transform hover:scale-105"
-            >
-              Add to Cart
-            </button>
-          </div>
+          {/* Stock & Purchase Info */}
+          {book.stock === 0 ? (
+            <div className="mt-2">
+              <div className="text-red-500 font-bold">Sold Out</div>
+              <button
+                           onClick={handleNotifyMe}
+                           className="mt-2 flex items-center gap-1 px-2 py-1 bg-yellow-500 text-white rounded shadow hover:bg-yellow-600 transition-all duration-200"
+                         >
+                          
+                           <span>Notify me when back in stock</span>
+                           <IoNotifications size={20} />
+                         </button>
+            </div>
+          ) : (
+            <>
+              {book.stock < 5 && (
+                <div className="mt-2 text-red-500 text-sm font-semibold">
+                  Hurry up! Only {book.stock} left in stock.
+                </div>
+              )}
+              <div className="flex gap-6 mb-6">
+                <button
+                  onClick={() => handleAddToCart(book)}
+                  className="text-lg px-8 py-3 bg-yellow-500 text-black font-semibold rounded-md shadow-xl hover:bg-yellow-600 focus:outline-none transition-all duration-200 transform hover:scale-105"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
       {/* Tabs for Description, Featured Details, and Reviews */}
