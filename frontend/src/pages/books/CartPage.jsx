@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { getImgUrl } from '../../utils/getImgUrl'
 import { LuTrash2 } from 'react-icons/lu'
+import axios from 'axios'
+
 import { 
   fetchCart,
   removeFromCartAsync,
@@ -43,41 +45,47 @@ const CartPage = () => {
     dispatch(clearCartAsync(currentUser.uid.trim()))
   }
 
-  // Miktar arttırma: hem MAX_QUANTITY hem de stok miktarını kontrol et
-  const handleIncreaseQuantity = (product) => {
-    // Eğer ürünün stok değeri gönderilmemişse veya boşsa, varsayılan olarak MAX_QUANTITY'yi kabul et
-    let stockAvailable;
-    if (product.stock === undefined || product.stock === null || product.stock === '') {
-      stockAvailable = MAX_QUANTITY;
-    } else {
-      stockAvailable = Number(product.stock);
-    }
-
-    // Eğer stokta hiç ürün yoksa
-    if (stockAvailable <= 0) {
-      setAlertMessage("This product is out of stock.")
-      setShowAlert(true)
-      return
-    }
-
-    // Ürünün mevcut stok miktarı ile sabit limit arasından en düşük değeri al
-    const allowedLimit = Math.min(stockAvailable, MAX_QUANTITY)
-
-    if (product.quantity < allowedLimit) {
-      dispatch(
+  const handleIncreaseQuantity = async (product) => {
+    try {
+      // Ürünün güncel halini backend'den al
+      const response = await axios.get(`http://localhost:5000/api/books/${product.productId || product._id}`);
+      const updatedProduct = response.data;
+      const availableStock = Number(updatedProduct.stock);
+      const allowedLimit = Math.min(availableStock, MAX_QUANTITY);
+  
+      // Eğer stok yoksa veya kullanıcı zaten en fazla adedi eklediyse
+      if (availableStock <= 0) {
+        setAlertMessage("This product is out of stock.");
+        setShowAlert(true);
+        return;
+      }
+  
+      if (product.quantity >= allowedLimit) {
+        setAlertMessage(
+          `You can only add up to ${allowedLimit} item${allowedLimit > 1 ? 's' : ''}. Only ${availableStock} in stock.`
+        );
+        setShowAlert(true);
+        return;
+      }
+  
+      // Güncelleme işlemi
+      await dispatch(
         updateCartItemAsync({
           userId: currentUser.uid.trim(),
           itemId: product._id,
           quantity: product.quantity + 1,
         })
-      )
-    } else {
-      setAlertMessage(
-        `You can only add up to ${allowedLimit} items of this product. Only ${stockAvailable} in stock.`
-      )
-      setShowAlert(true)
+      );
+  
+      // Güncel sepet verisini tekrar çek
+      dispatch(fetchCart(currentUser.uid.trim()));
+    } catch (err) {
+      console.error("Error checking stock:", err);
+      setAlertMessage("Failed to check stock. Please try again.");
+      setShowAlert(true);
     }
-  }
+  };
+  
 
   // Miktar azaltma
   const handleDecreaseQuantity = (product) => {
