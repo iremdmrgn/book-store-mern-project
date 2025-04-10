@@ -98,18 +98,22 @@ const BookCard = ({ book }) => {
     <div className="relative">
       {/* Modal Alert */}
       {showAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white px-6 py-4 rounded-lg shadow-md text-center max-w-sm w-full">
-            <p className="text-sm font-medium text-red-600">{alertMessage}</p>
-            <button
-              onClick={closeAlert}
-              className="mt-4 px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-full"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+  <div className="fixed inset-0 flex justify-center items-center z-50 bg-gray-800 bg-opacity-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+      <p className="text-lg font-semibold text-red-600">{alertMessage}</p>
+      <button 
+        onClick={closeAlert}
+        className="mt-4 px-5 py-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition-all duration-150"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+
+
+
 
       <div className="rounded-lg transition-shadow duration-300 w-full max-w-[200px] mx-auto my-0 shadow-lg hover:shadow-2xl relative">
         <div className="flex flex-col items-center gap-3 p-3 border rounded-md" style={{ backgroundColor: 'rgba(150, 150, 170, 0.3)' }}>
