@@ -25,9 +25,7 @@ const DashboardLayout = () => {
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
       <aside className="w-20 bg-gray-800 flex flex-col items-center py-4">
-        <Link to="/" className="mb-8">
-          <img src="/fav-icon.png" alt="Logo" className="h-10 w-10" />
-        </Link>
+        
         <nav className="flex flex-col space-y-4">
           <Link to="/dashboard" className="text-white p-2 bg-white bg-opacity-10 rounded">
             {/* Dashboard Icon */}
@@ -44,22 +42,25 @@ const DashboardLayout = () => {
             <MdOutlineManageHistory className="h-6 w-6" />
           </Link>
         </nav>
-        <div className="mt-auto mb-4">
-          <button onClick={handleLogout} className="text-white p-2 hover:bg-gray-700 rounded">
-            {/* Logout Icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
       </aside>
       {/* Main content */}
       <div className="flex-grow">
         <header className="bg-white shadow p-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Dashboard</h1>
-          <div className="text-gray-700">Welcome, İrem Demireğen</div>
+          <div className="flex flex-col items-end">
+            <div className="text-gray-700">Welcome, İrem Demireğen</div>
+            <button 
+              onClick={handleLogout} 
+              className="mt-2 p-2 hover:bg-gray-200 rounded"
+            >
+              {/* Logout Icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
         </header>
         <main className="p-6">
           <Outlet />

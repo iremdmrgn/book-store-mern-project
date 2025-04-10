@@ -35,6 +35,8 @@ const addressRoutes = require("./src/address/addressRoutes.js");
 const paymentMethodRoutes = require("./src/PaymentMethod/PaymentMethod.route.js");
 const accountRoutes = require("./src/account/account.routes");
 const dashboardRoutes = require("./src/dashboard/dashboardRoutes");
+// Import notifications routes
+const notificationRoutes = require("./src/notifications/notificationRoutes");
 
 // Mount routes
 app.use("/api/account", accountRoutes);
@@ -48,6 +50,8 @@ app.use("/api/favorites", favoritesRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/payment-method", paymentMethodRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+// Mount notifications route
+app.use("/api/notifications", notificationRoutes);
 
 // Default route
 app.use("/", (req, res) => {

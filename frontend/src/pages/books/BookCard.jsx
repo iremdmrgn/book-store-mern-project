@@ -140,35 +140,40 @@ const BookCard = ({ book }) => {
                 : book?.description || 'No description available'}
             </p>
 
-            <p className="font-medium mb-2 text-xs">
+            <p className="font-medium mb-0 text-l">
               ${book?.newPrice}
-              <span className="line-through font-normal ml-2 text-xs">
+              <span className="line-through font-normal ml-2 text-l">
                 ${book?.oldPrice}
               </span>
             </p>
 
             {book.stock === 0 ? (
-              <div className="flex flex-col items-center">
-                <div className="text-red-600 font-bold text-lg">Sold Out</div>
-              </div>
-            ) : (
-              <>
-                {book.stock < 3 && (
-                  <div className="mt-2 text-red-500 text-xs font-semibold">
-                    Hurry up! Only {book.stock} left in stock.
-                  </div>
-                )}
-                <div className="flex items-center justify-center gap-2">
-                  <button
-                    onClick={handleAddToCart}
-                    className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 whitespace-nowrap"
-                  >
-                    <FiShoppingCart size={14} />
-                    <span className="truncate">Add to Cart</span>
-                  </button>
-                </div>
-              </>
-            )}
+  <div className="flex flex-col items-center">
+    <div className="text-red-600 font-bold text-lg">Sold Out</div>
+  </div>
+) : (
+  <>
+    {/* Sabit yükseklik belirleyerek mesaj alanını her kart için aynı yapıyoruz */}
+    <div className="mt-2 h-8">
+      {book.stock < 3 && (
+        <div className="text-red-500 text-xs font-semibold">
+          Hurry up! Only {book.stock} left in stock.
+        </div>
+      )}
+    </div>
+    <div className="flex items-center justify-center gap-2">
+    <button
+  onClick={handleAddToCart}
+  className="bg-yellow-500 hover:bg-yellow-600 transition-all duration-200 text-black text-xs px-14 py-2 flex items-center gap-1 rounded-lg shadow-md whitespace-nowrap"
+>
+  <FiShoppingCart size={14} color="black" />
+  <span className="truncate">Add to Cart</span>
+</button>
+
+
+    </div>
+  </>
+)}
 
             <button
               onClick={handleAddToFavorites}
