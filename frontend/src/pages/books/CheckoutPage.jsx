@@ -170,27 +170,41 @@ const CheckoutPage = () => {
           cvv: data.cvv,
         };
 
-    const orderData = {
-      name: data.name,
-      email: data.email,
-      address: {
-        city: deliveryAddress.city,
-        state: deliveryAddress.state,
-        zipcode: deliveryAddress.zipcode,
-        country: deliveryAddress.country,
-      },
-      phone: Number(data.phone),
-      items: cartItems.map((item) => ({
-        productId: item.productId,
-        title: item.title,
-        coverImage: item.coverImage,
-        price: item.newPrice,
-        quantity: Number(item.quantity)
-      })),
-      totalPrice: Number(totalPrice),
-      shippingCost, // add shipping cost to order data
-      finalPrice: Number(totalPrice) + shippingCost, // order subtotal plus shipping
-    };
+    
+const orderData = {
+  name: data.name,
+  email: data.email,
+  address: {
+    title: selectedAddressOption === 'saved' && selectedSavedAddress?.title
+      ? selectedSavedAddress.title
+      : data.addressTitle,
+    street: selectedAddressOption === 'saved' && selectedSavedAddress?.street
+      ? selectedSavedAddress.street
+      : data.address,
+    city: deliveryAddress.city,
+    state: deliveryAddress.state,
+    zipcode: deliveryAddress.zipcode,
+    country: deliveryAddress.country,
+  },
+  
+  phone: Number(data.phone),
+  items: cartItems.map((item) => ({
+    productId: item.productId,
+    title: item.title,
+    coverImage: item.coverImage,
+    price: item.newPrice,
+    quantity: Number(item.quantity),
+  })),
+  totalPrice: Number(totalPrice),
+  shippingCost,
+  finalPrice: Number(totalPrice) + shippingCost,
+
+  // ✅ Payment Method bilgisi eklendi:
+  paymentMethod:
+    selectedPaymentOption === 'saved' && selectedSavedPayment
+      ? `${selectedSavedPayment.cardHolder} — **** **** **** ${selectedSavedPayment.cardNumber.slice(-4)} (Exp: ${selectedSavedPayment.expiryDate})`
+      : `${data.cardHolder} — **** **** **** ${data.cardNumber?.slice(-4)} (Exp: ${data.expiryDate})`,
+};
 
     console.log("Order Data:", orderData);
 

@@ -739,27 +739,31 @@ const Profile = () => {
   
     // Delivery Address: Eğer order.address nesnesi varsa,
     // checkout bölümünüzdeki gibi "Data Net Bilgisayar - Muhittin mahallesi, Tekirdağ, 58760, Türkiye" formatında gösterilsin.
-    const addressHtml = order.address && typeof order.address === "object"
-      ? `
-        <div style="margin-top: 1rem; text-align: left;">
-          <h4>Delivery Address</h4>
-          <p style="color: #4a5568; font-size: 0.9rem;">
-            ${order.address.title ? order.address.title + " - " : ""}
-            ${order.address.street ? order.address.street + ", " : ""}
-            ${order.address.city ? order.address.city + ", " : ""}
-            ${order.address.postalCode ? order.address.postalCode + ", " : ""}
-            ${order.address.country || ""}
-          </p>
-        </div>
-      `
-      : order.address
+    const addressObj = order.address;
+    const addressHtml =
+      addressObj && typeof addressObj === "object"
         ? `
-        <div style="margin-top: 1rem; text-align: left;">
-          <h4>Delivery Address</h4>
-          <p style="color: #4a5568; font-size: 0.9rem;">${order.address}</p>
-        </div>
-      `
+          <div style="margin-top: 1rem; text-align: left;">
+            <h4>Delivery Address</h4>
+            <p style="color: #4a5568; font-size: 0.9rem;">
+              ${addressObj.title ? addressObj.title + " - " : ""}
+              ${addressObj.street ? addressObj.street + ", " : ""}
+              ${addressObj.city ? addressObj.city + ", " : ""}
+              ${addressObj.state ? addressObj.state + ", " : ""}
+              ${addressObj.zipcode ? addressObj.zipcode + ", " : ""}
+              ${addressObj.country || ""}
+            </p>
+          </div>
+        `
+        : addressObj
+        ? `
+          <div style="margin-top: 1rem; text-align: left;">
+            <h4>Delivery Address</h4>
+            <p style="color: #4a5568; font-size: 0.9rem;">${addressObj}</p>
+          </div>
+        `
         : "";
+    
   
     // Payment Method: Eğer order.paymentMethod nesnesel ise, checkout'taki gibi detaylı gösterelim.
     let paymentHtml = "";
