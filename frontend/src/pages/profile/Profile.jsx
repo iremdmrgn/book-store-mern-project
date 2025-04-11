@@ -256,15 +256,24 @@ const Profile = () => {
   const [reviews, setReviews] = useState([]);
 
   // Fetch orders using RTK Query
-  const { data: orders } = useGetOrderByEmailQuery(currentUser?.email || "");
+// Fetch orders using RTK Query (refetch destekli)
+const { data: orders, refetch } = useGetOrderByEmailQuery(currentUser?.email || "");
 
-  // Local state for customer orders to allow real-time socket updates
-  const [customerOrders, setCustomerOrders] = useState([]);
-  useEffect(() => {
-    if (orders) {
-      setCustomerOrders(orders);
-    }
-  }, [orders]);
+// Local state for customer orders to allow real-time socket updates
+const [customerOrders, setCustomerOrders] = useState([]);
+useEffect(() => {
+  if (orders) {
+    setCustomerOrders(orders);
+  }
+}, [orders]);
+
+// Tab değişince "orders" sekmesine gelindiyse refetch yap
+useEffect(() => {
+  if (selectedTab === "orders") {
+    refetch();
+  }
+}, [selectedTab]);
+
 
   // Socket integration: listen for "orderUpdated" events and update local orders
   useEffect(() => {
@@ -722,82 +731,71 @@ const Profile = () => {
   };
 
   const handleOrderClick = (order) => {
-    // Order progress tracker (durum takibi)
     const statusTrackerHtml = ReactDOMServer.renderToStaticMarkup(
       <OrderStatusTracker status={order.status || "Order Received"} />
     );
   
-    // Kullanıcı bilgileri
     const userInfoHtml = `
       <div style="margin-top: 1rem;">
         <h4>User Information</h4>
-        <p><strong>Name:</strong> ${editableFirstName} ${editableLastName}</p>
-        <p><strong>Email:</strong> ${editableEmail}</p>
-        <p><strong>Phone:</strong> ${editablePhone}</p>
+        <p>Name: ${editableFirstName} ${editableLastName}</p>
+        <p>Email: ${editableEmail}</p>
+        <p>Phone: ${editablePhone}</p>
       </div>
     `;
   
-    // Delivery Address: Eğer order.address nesnesi varsa,
-    // checkout bölümünüzdeki gibi "Data Net Bilgisayar - Muhittin mahallesi, Tekirdağ, 58760, Türkiye" formatında gösterilsin.
-    const addressObj = order.address;
-    const addressHtml =
-      addressObj && typeof addressObj === "object"
-        ? `
-          <div style="margin-top: 1rem; text-align: left;">
-            <h4>Delivery Address</h4>
-            <p style="color: #4a5568; font-size: 0.9rem;">
-              ${addressObj.title ? addressObj.title + " - " : ""}
-              ${addressObj.street ? addressObj.street + ", " : ""}
-              ${addressObj.city ? addressObj.city + ", " : ""}
-              ${addressObj.state ? addressObj.state + ", " : ""}
-              ${addressObj.zipcode ? addressObj.zipcode + ", " : ""}
-              ${addressObj.country || ""}
-            </p>
-          </div>
-        `
-        : addressObj
-        ? `
-          <div style="margin-top: 1rem; text-align: left;">
-            <h4>Delivery Address</h4>
-            <p style="color: #4a5568; font-size: 0.9rem;">${addressObj}</p>
-          </div>
-        `
-        : "";
-    
-  
-    // Payment Method: Eğer order.paymentMethod nesnesel ise, checkout'taki gibi detaylı gösterelim.
-    let paymentHtml = "";
-    if (order.paymentMethod && typeof order.paymentMethod === "object") {
-      let bankLogoHtml = "";
-      const brand = detectCardBrand(order.paymentMethod.cardNumber);
-      if (brand === "visa") {
-        bankLogoHtml = `<img src="/path-to-visa-logo.png" alt="Visa" style="width:32px; margin-right:8px;" />`;
-      } else if (brand === "mastercard") {
-        bankLogoHtml = `<img src="/path-to-mastercard-logo.png" alt="Mastercard" style="width:32px; margin-right:8px;" />`;
-      } else if (brand === "amex") {
-        bankLogoHtml = `<img src="/path-to-amex-logo.png" alt="Amex" style="width:32px; margin-right:8px;" />`;
-      } else if (brand === "discover") {
-        bankLogoHtml = `<img src="/path-to-discover-logo.png" alt="Discover" style="width:32px; margin-right:8px;" />`;
-      }
-      paymentHtml = `
+    const addressHtml = order.address && typeof order.address === "object"
+      ? `
         <div style="margin-top: 1rem; text-align: left;">
-          <h4>Payment Method</h4>
-          <p style="color: #4a5568; font-size: 0.9rem; display: flex; align-items: center;">
-            ${bankLogoHtml}
-            ${order.paymentMethod.cardHolder} — **** **** **** ${order.paymentMethod.cardNumber.slice(-4)} (Exp: ${order.paymentMethod.expiryDate})
+          <h4>Delivery Address</h4>
+          <p style="color: #4a5568; font-size: 1rem;">
+            ${order.address.title ? order.address.title + " - " : ""}
+            ${order.address.street ? order.address.street + ", " : ""}
+            ${order.address.city ? order.address.city + ", " : ""}
+            ${order.address.zipcode ? order.address.zipcode + ", " : ""}
+            ${order.address.country || ""}
           </p>
         </div>
-      `;
-    } else if (order.paymentMethod) {
-      paymentHtml = `
+      `
+      : order.address
+        ? `
         <div style="margin-top: 1rem; text-align: left;">
-          <h4>Payment Method</h4>
-          <p style="color: #4a5568; font-size: 0.9rem;">${order.paymentMethod}</p>
+          <h4>Delivery Address</h4>
+          <p style="color: #4a5568; font-size: 0.9rem;">${order.address}</p>
         </div>
-      `;
-    }
+      `
+        : "";
   
-    // Order items HTML: Her bir sipariş ürününü checkout'taki gibi listeleyelim.
+        let paymentHtml = "";
+if (order.paymentMethod && typeof order.paymentMethod === "object") {
+  // Kart markasını tespit et
+  let brandIcon = '<span style="color: #000; font-weight: bold;">💳</span>';
+  const brand = detectCardBrand(order.paymentMethod.cardNumber);
+  if (brand === "visa") brandIcon = '<span style="color: #000; font-weight: bold;">💳 Visa</span>';
+  else if (brand === "mastercard") brandIcon = '<span style="color: #000; font-weight: bold;">💳 Mastercard</span>';
+  else if (brand === "amex") brandIcon = '<span style="color: #000; font-weight: bold;">💳 American Express</span>';
+  else if (brand === "discover") brandIcon = '<span style="color: #000; font-weight: bold;">💳 Discover</span>';
+  else if (brand === "troy") brandIcon = '<span style="color: #000; font-weight: bold;">💳 Troy</span>';
+  
+
+  paymentHtml = `
+    <div style="margin-top: 1rem; text-align: left;">
+      <h4>Payment Method</h4>
+      <p style="color: #4a5568; font-size: 1rem;">
+        ${brandIcon} ${order.paymentMethod.cardHolder} — **** **** **** ${order.paymentMethod.cardNumber.slice(-4)} (Exp: ${order.paymentMethod.expiryDate})
+      </p>
+    </div>
+  `;
+} else if (order.paymentMethod) {
+  paymentHtml = `
+    <div style="margin-top: 1rem; text-align: left;">
+      <h4>Payment Method</h4>
+      <p style="color: #4a5568; font-size: 0.9rem;">${order.paymentMethod}</p>
+    </div>
+  `;
+}
+
+  
     let itemsHtml = "";
     if (order.items && order.items.length > 0) {
       order.items.forEach((item) => {
@@ -815,7 +813,6 @@ const Profile = () => {
       });
     }
   
-    // Shipping Information: Eğer order.shippingStatus varsa (ve "Pending" değilse)
     const shippingSectionHtml =
       order.shippingStatus && order.shippingStatus !== "Pending"
         ? `
@@ -829,31 +826,51 @@ const Profile = () => {
       `
         : "";
   
-    // Assemble final modal HTML:
-    const modalHtml = `
-      <div style="text-align: left;">
-        <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
-        <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-        <p><strong>Order Summary:</strong> ${
-          order.items && order.items.length > 0
-            ? `${order.items.length} item${order.items.length > 1 ? "s" : ""}`
-            : "N/A"
-        }</p>
-        <p><strong>Total:</strong> ${
-          order.totalPrice !== undefined && order.totalPrice !== null
-            ? `$${order.totalPrice.toFixed(2)}`
-            : "N/A"
-        }</p>
-        ${statusTrackerHtml}
-        <hr style="margin: 1rem 0;"/>
-        <p style="font-size: 1rem; font-weight:bold;">Items:</p>
-        ${itemsHtml}
-        ${userInfoHtml}
-        ${addressHtml}
-        ${paymentHtml}
-        ${shippingSectionHtml}
-      </div>
-    `;
+        const modalHtml = `
+  <div style="
+    text-align: left;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    padding: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  ">
+    <style>
+      h4 {
+        color: #000000;
+        font-weight: bold;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      strong {
+        color: #000000;
+        font-weight: bold;
+      }
+    </style>
+
+    <p><strong>Order No:</strong> ${order.orderNumber ? order.orderNumber : order._id}</p>
+    <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+    <p><strong>Order Summary:</strong> ${
+      order.items && order.items.length > 0
+        ? `${order.items.length} item${order.items.length > 1 ? "s" : ""}`
+        : "N/A"
+    }</p>
+    <p><strong>Total:</strong> ${
+      order.totalPrice !== undefined && order.totalPrice !== null
+        ? `$${order.totalPrice.toFixed(2)}`
+        : "N/A"
+    }</p>
+    ${statusTrackerHtml}
+    <hr style="margin: 1rem 0;"/>
+    <p style="font-size: 1rem; font-weight:bold;">Items:</p>
+    ${itemsHtml}
+    ${userInfoHtml}
+    ${addressHtml}
+    ${paymentHtml}
+    ${shippingSectionHtml}
+  </div>
+`;
+
   
     Swal.fire({
       title: `<strong>Order Details</strong>`,
@@ -1258,60 +1275,61 @@ const Profile = () => {
             </div>
           )}
 
-          {selectedTab === "userInfo" && (
-            <div className="p-6 border rounded-2xl bg-white text-black shadow-lg w-full max-w-2xl">
-              <h3 style={{ fontFamily: "Lobster, cursive" }} className="text-3xl font-semibold text-black mb-4">
-                My Information
-              </h3>
-              <div className="grid gap-4">
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-black">First Name</label>
-                  <input
-                    type="text"
-                    value={editableFirstName}
-                    onChange={(e) => setEditableFirstName(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-black">Last Name</label>
-                  <input
-                    type="text"
-                    value={editableLastName}
-                    onChange={(e) => setEditableLastName(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-black">Phone Number</label>
-                  <input
-                    type="text"
-                    value={editablePhone}
-                    onChange={(e) => setEditablePhone(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block font-semibold text-black">Email</label>
-                  <input
-                    type="email"
-                    value={editableEmail}
-                    onChange={(e) => setEditableEmail(e.target.value)}
-                    className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleUpdateUser}
-                    className="mt-4 w-auto px-5 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
-                  >
-                    Update Information
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+{selectedTab === "userInfo" && (
+  <div className="p-6 border rounded-2xl bg-white text-black shadow-lg w-full max-w-2xl">
+    <h3 className="text-4xl font-bold text-gray-900 mb-6 border-b pb-2" style={{ fontFamily: "Lobster, cursive" }}>
+      My Information
+    </h3>
+    <div className="grid gap-4">
+      <div className="flex flex-col">
+        <label className="block font-semibold text-black">First Name</label>
+        <input
+          type="text"
+          value={editableFirstName}
+          onChange={(e) => setEditableFirstName(e.target.value)}
+          className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="block font-semibold text-black">Last Name</label>
+        <input
+          type="text"
+          value={editableLastName}
+          onChange={(e) => setEditableLastName(e.target.value)}
+          className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="block font-semibold text-black">Phone Number</label>
+        <input
+          type="text"
+          value={editablePhone}
+          onChange={(e) => setEditablePhone(e.target.value)}
+          className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
+          placeholder="Enter phone number"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="block font-semibold text-black">Email</label>
+        <input
+          type="email"
+          value={editableEmail}
+          onChange={(e) => setEditableEmail(e.target.value)}
+          className="border p-2 rounded-md focus:ring-gray-300 focus:border-gray-300"
+        />
+      </div>
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={handleUpdateUser}
+          className="px-6 py-2 bg-gray-300 text-black font-semibold rounded-lg hover:bg-gray-400"
+        >
+          Update Information
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
           {selectedTab === "address" && (
             <div className="p-8 bg-white shadow-xl rounded-xl w-full max-w-2xl">

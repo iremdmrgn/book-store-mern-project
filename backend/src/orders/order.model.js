@@ -11,23 +11,14 @@ const orderSchema = new mongoose.Schema({
     required: true, // Customer's email address
   },
   address: {
-    city: {
-      type: String,
-      required: true, // City name
-    },
-    country: {
-      type: String,
-      default: "", // Country (optional)
-    },
-    state: {
-      type: String,
-      default: "", // State (optional)
-    },
-    zipcode: {
-      type: String,
-      default: "", // Zip code (optional)
-    },
+    title: { type: String, default: "" },   // EKLE
+    street: { type: String, default: "" },  // EKLE
+    city: { type: String, required: true },
+    state: { type: String, default: "" },
+    zipcode: { type: String, default: "" },
+    country: { type: String, default: "" },
   },
+  
   phone: {
     type: String, // Changed to String to better handle phone numbers
     required: true, // Customer's phone number
@@ -74,9 +65,14 @@ const orderSchema = new mongoose.Schema({
     default: "Pending", // Sipariş oluşturulurken default olarak "Pending"
   },
   paymentMethod: {
-    type: String,
-    default: "Cash on Delivery", // Payment method
+    cardHolder: { type: String },
+    cardNumber: { type: String },
+    expiryDate: { type: String }
   },
+  
+  
+  
+  
   paymentStatus: {
     type: String,
     default: "Unpaid", // Payment status
